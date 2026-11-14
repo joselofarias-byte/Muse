@@ -120,7 +120,7 @@ try {
 
   const first = mod.connectionBanner({ online: true, status: "reconnecting", attempt: 0, everConnected: false });
   assert(first.visible && first.textKey === "connection.connecting", `Para la primera conexión, utilice conexión.conexión:${first.textKey}`);
-  assert(zh(first.textKey) === "Conectando teléfono celular…", `Primera copia de conexión:${zh(first.textKey)}`);
+  assert(zh(first.textKey) === "Conectando con el teléfono…", `Primera copia de conexión:${zh(first.textKey)}`);
   assert(!first.retry, "No se permitirán reintentos manuales para las 2 primeras reconexiones.");
 
   const tries2 = mod.connectionBanner({ online: true, status: "reconnecting", attempt: 2, everConnected: true });
@@ -139,13 +139,13 @@ try {
   const hintText = (key) => (key === undefined ? "" : zh(key));
   const hintOffline = mod.composerDisabledHint({ online: false, status: "connected" });
   assert(hintOffline === "composer.hintOffline", `Cuando está sin conexión, la descripción del cuadro de entrada va a compositor.hintOffline:${hintOffline}`);
-  assert(hintText(hintOffline).includes("desconectada"), `Cuando está desconectado, la descripción del cuadro de entrada es \"desconectada\":${hintText(hintOffline)}`);
+  assert(hintText(hintOffline).includes("sin conexión"), `Cuando está desconectado, la descripción del cuadro de entrada es \"sin conexión\":${hintText(hintOffline)}`);
   const hintReconnecting = mod.composerDisabledHint({ online: true, status: "reconnecting" });
   assert(hintReconnecting === "composer.hintReconnecting", `En el cuadro de entrada de reconexión, vaya a compositor.hintReconexión:${hintReconnecting}`);
-  assert(hintText(hintReconnecting).includes("Reconectándose"), `La descripción del cuadro de entrada durante la reconexión:${hintText(hintReconnecting)}`);
+  assert(hintText(hintReconnecting).includes("Reconectando"), `La descripción del cuadro de entrada durante la reconexión:${hintText(hintReconnecting)}`);
   const hintClosed = mod.composerDisabledHint({ online: true, status: "closed" });
   assert(hintClosed === "composer.hintClosed", `Después de desconectarse, la descripción del cuadro de entrada va a compositor.hintClosed:${hintClosed}`);
-  assert(hintText(hintClosed).includes("desconectado"), `Después de la desconexión, la descripción del cuadro de entrada es \"Desconectado\":${hintText(hintClosed)}`);
+  assert(hintText(hintClosed).includes("conexión"), `Después de la desconexión, la descripción del cuadro de entrada es \"conexión\":${hintText(hintClosed)}`);
   assert(mod.composerDisabledHint({ online: true, status: "connected" }) === undefined, "El cuadro de entrada está disponible cuando la conexión es normal.");
 
   // ── 2. retraso del esqueleto 300ms ──────────────────────────────────────────
@@ -167,7 +167,7 @@ try {
   assert(/role="alert"/.test(boundary), "Los errores de bloque tienen semántica de alerta");
   const chat = readFileSync(join(ROOT, "src", "host", "HostChat.tsx"), "utf8");
   // El nombre del bloque también es una entrada: al afirmar "qué bloque cubre el límite", miramos la clave que toma y luego verificamos que la copia de la clave no haya cambiado.
-  for (const [key, copy] of [["block.messages", "Lista de mensajes"], ["block.sessions", "Lista de conversación"], ["block.settings", "página de configuración"]]) {
+  for (const [key, copy] of [["block.messages", "La lista de mensajes"], ["block.sessions", "La lista de conversaciones"], ["block.settings", "La página de ajustes"]]) {
     assert(mod.ES[key] === copy, `entrada ${key} es \"${copy}\"`);
     const wrapped = new RegExp(`<BlockBoundary name=\\{t\\("${key.replace(/\./g, "\\.")}"\\)\\}`);
     assert(wrapped.test(chat), `「${copy}\"Se envuelve una capa separada de límites de bloque (el nombre sigue a la entrada)`);
@@ -191,20 +191,20 @@ try {
   assert(unknownRole.includes("host-msg-unknown") && unknownRole.includes("Tipo de mensaje desconocido"), "Rol desconocido degradado a una visualización neutral en una línea");
   assert(unknownRole.includes("Texto"), "La función desconocida aún muestra el texto (sin perder contenido)");
   assert(renderMessage({ imageUrls: ["weird://x"] }).includes("Este archivo adjunto no se puede abrir en la página web."), "El formulario de archivo adjunto desconocido da una pista neutral");
-  assert(renderMessage({ imageUrls: ["file:///data/user/0/x.bin"] }).includes("teléfono celular"), "La ruta local de los datos antiguos proporciona las indicaciones correspondientes.");
+  assert(renderMessage({ imageUrls: ["file:///data/user/0/x.bin"] }).includes("en el teléfono"), "La ruta local de los datos antiguos proporciona las indicaciones correspondientes.");
 
   // ── 4. Página de marcador de posición unificada ─────────────────────────────────────────────
   const placeholder = mod.renderToStaticMarkup(
     mod.createElement(mod.HostPlaceholder, { title: "PROTO-Accesibilidad", description: "PROTO-¿Qué hace esta función?", onBack: () => undefined }),
   );
-  assert(placeholder.includes("Esta función debe operarse en un teléfono celular."), "Las instrucciones de la página del marcador de posición deben operarse en un teléfono celular.");
+  assert(placeholder.includes("Esto se hace en el teléfono"), "Las instrucciones de la página del marcador de posición deben operarse en el teléfono.");
   assert(placeholder.includes("PROTO-¿Qué hace esta función?"), "La página de marcador de posición utiliza instrucciones emitidas por el Anfitrión para explicar la función.");
-  assert(placeholder.includes(">Regresar<"), "La página del marcador de posición tiene un botón de retorno.");
+  assert(placeholder.includes(">Volver<"), "La página del marcador de posición tiene un botón de retorno.");
   assert(!/muse-capsule[^"]*is-primary/.test(placeholder), "La página del marcador de posición no contiene la operación principal (pretendiendo tener algo que hacer)");
   const placeholderNoDesc = mod.renderToStaticMarkup(
     mod.createElement(mod.HostPlaceholder, { title: "PROTO-terminales", onBack: () => undefined }),
   );
-  assert(placeholderNoDesc.includes("teléfonos celulares"), "Si no hay explicación, dé una palabra neutral, no un espacio en blanco.");
+  assert(placeholderNoDesc.includes("Muse para el teléfono"), "Si no hay explicación, dé una palabra neutral, no un espacio en blanco.");
   const settingsSource = readFileSync(join(ROOT, "src", "host", "HostSettings.tsx"), "utf8");
   assert(
     settingsSource.includes("<HostPlaceholder") && !settingsSource.includes("Esta página aún se está migrando."),
@@ -231,7 +231,7 @@ try {
     "El botón de icono en la barra de referencia y selección múltiple es aria-label (ir a la entrada)",
   );
   assert(
-    mod.ES["chat.exitSelection"] === "Salir de la selección múltiple" && mod.ES["chat.cancelQuote"] === "Quitar cita",
+    mod.ES["chat.exitSelection"] === "Salir de la selección" && mod.ES["chat.cancelQuote"] === "Quitar cita",
     "Salir de selección múltiple/cancelar la copia de la entrada citada aún",
   );
 
@@ -313,7 +313,7 @@ try {
     mod.renderToStaticMarkup(
       mod.createElement(mod.I18nProvider, { locale }, mod.createElement(mod.HostPlaceholder, { title: "PROTO-T", onBack: () => undefined })),
     );
-  assert(placeholderFor("es").includes("Esta función debe operarse en un teléfono celular."), "es muestra español");
+  assert(placeholderFor("es").includes("Esto se hace en el teléfono"), "es muestra español");
   assert(placeholderFor("en").includes("This needs to be done on your phone"), "en renderizar ingles");
   assert(placeholderFor("ja").includes("この機能はスマートフォンでの操作が必要です"), "ja muestra japonés");
   assert(placeholderFor("ru").includes("Для этой функции нужен телефон"), "ru renderizar ruso");

@@ -200,7 +200,7 @@ internal fun SubagentTaskDetailSheet(threadId: String, assistantId: String, onDi
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "thread: ${threadId.take(16)}",
+                        text = stringResource(R.string.review_subagent_thread, threadId.take(16)),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -261,7 +261,7 @@ class ChatTaskCardCoordinator(
                         taskCardId = taskCardId,
                         stepId = step.id,
                         status = TaskStepStatus.FAILED,
-                        result = "[Necesito manual] Herramientas de alto riesgo ${step.title} No lo vuelve a intentar automáticamente. Vuelva a intentarlo para confirmar.",
+                        result = "[Requiere intervención] ${step.title} es una herramienta de alto riesgo y no se reintenta sola. Vuelve a intentarlo para confirmar.",
                         startedAt = startedAt,
                         finishedAt = System.currentTimeMillis(),
                         autoExpand = true,
@@ -289,7 +289,7 @@ class ChatTaskCardCoordinator(
                             taskCardId = taskCardId,
                             stepId = step.id,
                             status = TaskStepStatus.CANCELLED,
-                            result = "[Cancelar] Inténtalo de nuevo ${step.title} Cancelado",
+                            result = "[Cancelado] Se canceló el reintento de ${step.title}",
                             startedAt = startedAt,
                             finishedAt = System.currentTimeMillis(),
                             autoExpand = false,
@@ -301,7 +301,7 @@ class ChatTaskCardCoordinator(
 
                 val timedOut = retryResult == null
                 val toolResult = retryResult
-                    ?: "[tiempo de espera] Inténtalo de nuevo ${step.title} exceder ${retryTimeoutMs / 1000} Sin respuesta por segundos,terminado"
+                    ?: "[Tiempo agotado] El reintento de ${step.title} superó ${retryTimeoutMs / 1000} s sin respuesta y se detuvo"
                 val isSuccess = !timedOut && isToolResultSuccess(toolResult)
                 writeRetriedStep(
                     taskCardId = taskCardId,

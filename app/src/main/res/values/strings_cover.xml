@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- ===== v1.0.53: biblioteca de portada(Beautify cubrir el flujo de trabajo) ===== -->
-    <string name="cover_imported">La cubierta ha sido importada.</string>
+    <string name="cover_imported">Portada importada</string>
     <string name="cover_import_failed">Error al importar la portada: %1$s</string>
-    <string name="cover_import">Cobertura de importación</string>
+    <string name="cover_import">Importar portada</string>
     <string name="cover_delete_confirm">¿Eliminar esta portada?</string>
-    <string name="cover_delete">Quitar la cubierta</string>
-    <string name="cover_pick">usa esta cubierta</string>
-    <string name="cover_generate">Generar cobertura</string>
-    <string name="cover_generating">Generando cobertura…</string>
-    <string name="cover_generate_failed">Falló la generación de portada: %1$s</string>
-    <string name="cover_generate_no_provider">El modelo de dibujo no está configurado, vaya a Configuración→Configúrelo en Modelos y Servicios e inténtelo nuevamente.</string>
-    <string name="cover_applied">Se ha aplicado la cobertura</string>
-    <string name="cover_library_title">biblioteca de portada</string>
-    <string name="cover_count">%1$d cubrir</string>
-    <string name="cover_empty_title">Aún no hay cobertura</string>
-    <string name="cover_empty_hint">Haga clic en el botón en la esquina inferior derecha para importar una imagen o deje que AI genere una portada.</string>
+    <string name="cover_delete">Eliminar portada</string>
+    <string name="cover_pick">Usar esta portada</string>
+    <string name="cover_generate">Generar portada</string>
+    <string name="cover_generating">Generando portada…</string>
+    <string name="cover_generate_failed">Error al generar la portada: %1$s</string>
+    <string name="cover_generate_no_provider">No hay un modelo de imagen configurado. Configura uno en Ajustes → Modelos y servicios e inténtalo de nuevo.</string>
+    <string name="cover_applied">Portada aplicada</string>
+    <string name="cover_library_title">Biblioteca de portadas</string>
+    <string name="cover_count">%1$d portadas</string>
+    <string name="cover_empty_title">Aún no hay portadas</string>
+    <string name="cover_empty_hint">Toca el botón inferior derecho para importar una imagen, o deja que la IA genere una portada</string>
 </resources>

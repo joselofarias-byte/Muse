@@ -163,7 +163,7 @@ try {
   const idle = searchView("");
   assert(idle.includes("Escribe para buscar") && !idle.includes('role="option"'), "Dé un mensaje cuando la palabra clave esté vacía y no enumere los resultados.");
   const empty = searchView("palabra que no existe");
-  assert(empty.includes("No hay ajustes que coincidan") && empty.includes("Borrar búsqueda"), "Si no hay ninguna coincidencia, se ofrece borrar la búsqueda.");
+  assert(empty.includes("Ningún ajuste coincide") && empty.includes("Borrar búsqueda"), "Si no hay ninguna coincidencia, se ofrece borrar la búsqueda.");
   assert(empty.includes('role="status"'), "Los estados vacíos tienen semántica de estado");
   const withResult = searchView("Apariencia");
   assert((withResult.match(/role="option"/g) ?? []).length === 2, "El número de resultados renderizados es consistente con los resultados filtrados.");

@@ -889,7 +889,7 @@ fun SettingsAboutPage(
                     modifier = Modifier.padding(MusePaddings.cardInner),
                 ) {
                     Text(
-                        text = "muse",
+                        text = "Muse",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -900,7 +900,10 @@ fun SettingsAboutPage(
                     )
                     Text(
                         // v1.66: Cambiar al valor dinámico de BuildConfig,No más codificación "debug"
-                        text = "Build: ${if (BuildConfig.DEBUG) "debug" else "release"}",
+                        text = stringResource(
+                            R.string.review_build_variant,
+                            stringResource(if (BuildConfig.DEBUG) R.string.review_build_debug else R.string.review_build_release),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline,
                     )

@@ -172,11 +172,11 @@ try {
   const toolHtml = render(bubble({ message: call, toolStatus: "running" }));
   assert(toolHtml.includes("<details"), "El bloque de llamada de herramienta es un elemento de colapso de detalles.");
   assert(!toolHtml.includes("<details open"), "Los bloques de llamadas de herramientas están contraídos de forma predeterminada");
-  assert(toolHtml.includes("read_file") && toolHtml.includes("ejecutando"), "La línea de título proporciona tanto el nombre como el estado de la herramienta.");
+  assert(toolHtml.includes("read_file") && toolHtml.includes("En curso"), "La línea de título proporciona tanto el nombre como el estado de la herramienta.");
 
   // ── 3. Proceso de pensamiento: plegado del mismo estilo, compartiendo componentes con el bloque de herramientas ──────────────────────
   const thinkingHtml = render(bubble({ message: message("r1", "assistant", { content: "responder", reasoning: "piensa primero" }) }));
-  assert(thinkingHtml.includes("proceso de pensamiento") && thinkingHtml.includes("piensa primero"), "Proceso de pensamiento representado en bloques plegados.");
+  assert(thinkingHtml.includes("Razonamiento") && thinkingHtml.includes("piensa primero"), "Proceso de pensamiento representado en bloques plegados.");
   assert(
     (thinkingHtml.match(/class="host-details"/g) ?? []).length === 1,
     "Los bloques de pensamiento y los bloques de herramientas comparten el mismo componente de plegado (host-details)",
@@ -239,8 +239,8 @@ try {
       actionsOpen: true,
     }),
   );
-  assert(favoriteMenu.includes("Cancelar favoritos") && !favoriteMenu.includes(">Colección<"), "Cuando ya esté recopilado, muestre \"No recolectar\" en lugar de \"Recopilar\".");
-  assert(favoriteMenu.includes("Citar") && favoriteMenu.includes("opción múltiple") && favoriteMenu.includes("Eliminar"), "Los cinco elementos del menú aparecen en la barra de operaciones expandida.");
+  assert(favoriteMenu.includes(">Quitar de favoritos<") && !favoriteMenu.includes(">Colección<"), "Cuando ya esté recopilado, muestre \"Quitar de favoritos\" en lugar de \"Favorito\".");
+  assert(favoriteMenu.includes("Citar") && favoriteMenu.includes("Seleccionar") && favoriteMenu.includes("Eliminar"), "Los cinco elementos del menú aparecen en la barra de operaciones expandida.");
   assert(favoriteMenu.includes("is-danger"), "Eliminar elementos marcados con estilo destructivo");
   const toolMenu = render(
     bubble({
@@ -273,7 +273,7 @@ try {
     bubble({ message: message("i1", "assistant", { content: "mira la foto", imageUrls: ["/api/media/tok-1"] }), capabilities: FULL }),
   );
   assert(imageHtml.includes('src="/api/media/tok-1"'), "imageUrls Representar directamente rutas relativas de origen");
-  assert(imageHtml.includes('aria-label="Ver imagen grande"') && imageHtml.includes('class="quiet host-bubble-image"'), "Se puede hacer clic en la imagen para verla en pantalla completa.");
+  assert(imageHtml.includes('aria-label="Ver en grande"') && imageHtml.includes('class="quiet host-bubble-image"'), "Se puede hacer clic en la imagen para verla en pantalla completa.");
   assert(!imageHtml.includes("is-grid"), "Una sola imagen no cubre la cuadrícula de varias imágenes");
   const multiImageHtml = render(
     bubble({
@@ -312,7 +312,7 @@ try {
     }),
   );
   assert(voiceHtml.includes("<audio") && voiceHtml.includes('src="/api/media/voice-1"'), "Renderizar cuando hay voiceUrl audio");
-  assert(voiceHtml.includes('aria-label="reproducir voz"'), "La barra de voz proporciona acceso a la reproducción.");
+  assert(voiceHtml.includes('aria-label="Reproducir voz"'), "La barra de voz proporciona acceso a la reproducción.");
   assert(voiceHtml.includes("12″"), "La barra de voz muestra la duración convertida por duraciónMs");
   assert(mod.formatVoiceDuration(12_000) === "12″" && mod.formatVoiceDuration(90_000) === "1′30″", "Formato de duración: segundos/minutos segundos");
 
@@ -336,13 +336,13 @@ try {
     }),
   );
   assert(failedHtml.includes("No hay red en el teléfono celular."), "failed mostrado en una burbuja errorText");
-  assert(failedHtml.includes("host-retry") && failedHtml.includes(">Inténtalo de nuevo<"), "failed Dale al botón \"Reintentar\" cuando");
+  assert(failedHtml.includes("host-retry") && failedHtml.includes(">Reintentar<"), "failed Dale al botón \"Reintentar\" cuando");
   assert(failedHtml.includes('role="alert"'), "Las líneas fallidas tienen semántica de alerta");
 
   const failedNoText = render(
     bubble({ message: message("st3", "user", { status: "failed" }), capabilities: FULL, onRetry: () => undefined }),
   );
-  assert(failedNoText.includes("Envío fallido"), "errorText Si falta, recurra a \"Error al enviar\"");
+  assert(failedNoText.includes("No se pudo enviar"), "errorText Si falta, recurra a \"No se pudo enviar\"");
 
   const noStatusCapability = render(
     bubble({
@@ -368,7 +368,7 @@ try {
   );
   assert((callsHtml.match(/class="host-details"/g) ?? []).length === 2, "Cada llamada a la herramienta representa un trozo de pliegue.");
   assert(callsHtml.includes("read_file") && callsHtml.includes("shell_exec"), "Cada título de bloque se llama con su propio nombre.");
-  assert(callsHtml.includes("éxito · 1.2s") && callsHtml.includes("falló · 0.3s"), "La línea del título indica el éxito o el fracaso y el tiempo necesario.");
+  assert(callsHtml.includes("Correcto · 1.2s") && callsHtml.includes("Falló · 0.3s"), "La línea del título indica el éxito o el fracaso y el tiempo necesario.");
   assert(callsHtml.includes("parámetros") && callsHtml.includes("hello"), "El área ampliada muestra vistas previas de parámetros y resultados.");
   assert(!callsHtml.includes("<details open"), "Los detalles de la herramienta están contraídos de forma predeterminada.");
 
@@ -386,7 +386,7 @@ try {
       toolStatus: "requested",
     }),
   );
-  assert(legacyToolHtml.includes("llamada de herramienta · read_file"), "toolCalls Recurrir al bloque de inferencia de nombre de herramienta cuando está vacío");
+  assert(legacyToolHtml.includes("Llamada a la herramienta · read_file"), "toolCalls Recurrir al bloque de inferencia de nombre de herramienta cuando está vacío");
 
   // ── 10. Negociación de capacidades: el antiguo anfitrión no degenerará en una ocultación total ─────────────────────────
   assert(LEGACY.known === false && LEGACY.media === true, "Cuando no se emite enableFlags, se sigue el comportamiento anterior (no se oculta ningún medio)");

@@ -267,7 +267,7 @@ No inventes lo que pasó hoy;Puedes saludar o simplemente preguntar cómo estás
      *
      * El resumen se genera una vez y se reutiliza durante mucho tiempo. No debe contener información sobre períodos de tiempo vencidos, solo el contenido en sí.
      */
-    private fun lightGreeting(): String = "No hay nada de qué hablar hoy, no dudes en ponerte en contacto conmigo cuando se te ocurra algo."
+    private fun lightGreeting(): String = "Hoy no hay nada pendiente. Escríbeme cuando quieras."
 
     private fun buildLocalSummary(todayMessages: List<UIMessage>, facts: List<String>): String {
         // v1.0.92: El área de saludo está situada como"Espacio de recordatorio rápido del asistente" —

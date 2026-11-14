@@ -115,7 +115,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         val step = stepOf(accessor, "s0")
         assertNotNull(step)
-        assertTrue(step!!.result.startsWith("[tiempo de espera]"))
+        assertTrue(step!!.result.startsWith("[Tiempo agotado]"))
         assertEquals(TaskCardPhase.DONE, accessor.snapshot.taskCards[CARD_ID]?.phase)
     }
 
@@ -137,7 +137,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         // Los pasos posteriores a la cancelación deben ser: CANCELLED(en lugar de para siempre RUNNING,Ni FAILED)
         awaitStatus(accessor, "s0", TaskStepStatus.CANCELLED)
-        assertTrue(stepOf(accessor, "s0")!!.result.startsWith("[Cancelar]"))
+        assertTrue(stepOf(accessor, "s0")!!.result.startsWith("[Cancelado]"))
     }
 
     @Test
@@ -194,7 +194,7 @@ class ChatTaskCardCoordinatorRetryTest {
 
         val step = stepOf(accessor, "s0")
         assertEquals(TaskStepStatus.FAILED, step?.status)
-        assertTrue("Se le pedirá que vuelva a intentarlo manualmente.", step!!.result.contains("No lo vuelve a intentar automáticamente"))
+        assertTrue(step!!.result.contains("no se reintenta sola"))
         io.mockk.coVerify(exactly = 0) { registry.executeFromJson("send_sms", any<String>()) }
     }
 

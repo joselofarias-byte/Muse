@@ -58,7 +58,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertTrue(output.contains("activada"))
         assertTrue(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -69,14 +69,14 @@ class SkillManagementToolsImplTest {
 
         val output = impl.enableSkill(mapOf("id" to "read_file"))
 
-        assertTrue(output.contains("Habilitado"))
+        assertTrue(output.contains("activada"))
         assertTrue(dao.rows["read_file"]!!.enabled)
     }
 
     @Test
     fun enableSkill_rejectsUnknownId() = runBlocking {
         val output = impl.enableSkill(mapOf("id" to "nope"))
-        assertTrue(output.contains("no encontrado"))
+        assertTrue(output.contains("no encontrada"))
     }
 
     @Test
@@ -118,7 +118,7 @@ class SkillManagementToolsImplTest {
                 mapOf("id" to "my_skill", "name" to "nuevo nombre", "description" to "Descripciones de habilidades actualizadas"),
             )
 
-        assertTrue(output.contains("actualizado"))
+        assertTrue(output.contains("actualizada"))
         val row = dao.rows["my_skill"]!!
         assertEquals("nuevo nombre", row.name)
         assertEquals("Descripciones de habilidades actualizadas", row.description)
@@ -135,7 +135,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "parametersJson" to schema))
 
-        assertTrue(output.contains("actualizado"))
+        assertTrue(output.contains("actualizada"))
         assertTrue(dao.rows["my_skill"]!!.parametersJson.contains("query"))
     }
 
@@ -145,7 +145,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "read_file", "name" to "renombrado"))
 
-        assertTrue("Debería generar retención incorporada,real: $output", output.contains("Rechazar modificación"))
+        assertTrue("Debería rechazar la habilidad integrada, real: $output", output.contains("Modificación rechazada"))
         assertEquals("Los contenidos de la biblioteca deben permanecer sin cambios.", before, dao.rows["read_file"])
     }
 
@@ -162,7 +162,7 @@ class SkillManagementToolsImplTest {
     @Test
     fun updateSkill_rejectsUnknownId() = runBlocking {
         val output = impl.updateSkill(mapOf("id" to "nope", "name" to "nuevo nombre"))
-        assertTrue(output.contains("no encontrado"))
+        assertTrue(output.contains("no encontrada"))
     }
 
     @Test
@@ -190,7 +190,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_skill", "prompt" to "nueva directiva"))
 
-        assertTrue("Las habilidades con palabras que no se solicitan no se pueden cambiar prompt,real: $output", output.contains("palabra de aviso"))
+        assertTrue("Una habilidad que no es de instrucciones no acepta prompt, real: $output", output.contains("habilidad de instrucciones"))
         assertEquals("web_search", dao.rows["my_skill"]!!.implementationKotlin)
     }
 
@@ -200,7 +200,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.updateSkill(mapOf("id" to "my_prompt_skill", "prompt" to "Nuevo texto de comando"))
 
-        assertTrue(output.contains("actualizado"))
+        assertTrue(output.contains("actualizada"))
         val row = dao.rows["my_prompt_skill"]!!
         assertEquals("prompt:Nuevo texto de comando", row.implementationKotlin)
         assertEquals(SkillImporter.EMPTY_PARAMETERS_JSON, row.parametersJson)
@@ -248,7 +248,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.execPromptSkill(skill)
 
-        assertTrue(output.contains("[comando de habilidad]"))
+        assertTrue(output.contains("[Instrucción de habilidad]"))
         assertTrue(output.contains("El primer paso es analizar las necesidades."))
         assertTrue(output.contains("Habilidades de palabras rápidas"))
     }
@@ -266,7 +266,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.execPromptSkill(skill)
 
-        assertTrue(output.contains("está vacío"))
+        assertTrue(output.contains("está vacía"))
     }
 
     @Test
@@ -294,7 +294,7 @@ class SkillManagementToolsImplTest {
         // Los parámetros de llamada deben ignorarse(La habilidad de palabra rápida no recibe parámetros)
         val output = executor.execute(skill, """{"ignored":"value"}""")
 
-        assertTrue("El comando de habilidad anotado debe devolverse.,real: $output", output.contains("[comando de habilidad]"))
+        assertTrue("Debe devolver la instrucción de la habilidad, real: $output", output.contains("[Instrucción de habilidad]"))
         assertTrue(output.contains("read_file path=secret.txt"))
         assertFalse("No debe caer en ramas de implementación desconocidas.", output.contains("Implementación de habilidades desconocidas"))
         assertFalse("Realmente no implementado read_file", output.contains("El archivo no existe"))
@@ -327,8 +327,8 @@ class SkillManagementToolsImplTest {
 
         assertTrue(output.contains("my_skill"))
         assertTrue(output.contains("read_file"))
-        assertTrue(output.contains("[Incorporado]"))
-        assertTrue(output.contains("[Usuario]"))
+        assertTrue(output.contains("[Integrada]"))
+        assertTrue(output.contains("[Tuya]"))
     }
 
     @Test
@@ -337,7 +337,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.uninstallSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Desinstalado"))
+        assertTrue(output.contains("desinstalada"))
         assertFalse(dao.rows.containsKey("my_skill"))
     }
 
@@ -347,7 +347,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "my_skill"))
 
-        assertTrue(output.contains("Discapacitado"))
+        assertTrue(output.contains("desactivada"))
         assertFalse(dao.rows["my_skill"]!!.enabled)
     }
 
@@ -390,7 +390,7 @@ class SkillManagementToolsImplTest {
 
         val output = impl.disableSkill(mapOf("id" to "read_file"))
 
-        assertTrue("Las habilidades integradas permiten la desactivación manual,real: $output", output.contains("Discapacitado"))
+        assertTrue("Las habilidades integradas se pueden desactivar, real: $output", output.contains("desactivada"))
         assertFalse(dao.rows["read_file"]!!.enabled)
     }
 

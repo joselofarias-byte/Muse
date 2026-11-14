@@ -76,7 +76,9 @@ class RagCitationChipsTest {
         }
         composeTestRule.onNodeWithText("[1]").performClick()
         composeTestRule.onNodeWithText("contenido del fragmento1").assertExists()
-        composeTestRule.onNodeWithText("Copiar resumen").assertExists()
+        composeTestRule.onNodeWithText(
+            ApplicationProvider.getApplicationContext<Context>().getString(R.string.chat_citation_copy_snippet),
+        ).assertExists()
         // No mostrar "Abrir documento" cuando no se proporciona ninguna devolución de llamada
         composeTestRule.onNodeWithText("Abrir documento").assertDoesNotExist()
     }

@@ -1,4 +1,6 @@
 name: JolufaSoft Musa APK release (es)
+# Builds the current commit, not a pinned historical branch.
+# The Spanish default lives in values/; this workflow publishes debug and release APKs for that locale.
 on:
   workflow_dispatch:
   push:
@@ -11,67 +13,102 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
-      - name: Checkout Spanish translation
-        uses: actions/checkout@v4
-        with:
-          ref: cursor/spanish-default-locale-f884
-          persist-credentials: false
+      - name: Checkout
+        uses: actions/checkout@v7
       - name: Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
       - name: Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1
       - name: Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Prepare embedded assets
+      - name: Prepare embedded web assets
         shell: bash
         run: |
           set -euo pipefail
           if [ -f web/package-lock.json ]; then
             (cd web && npm ci && npm run build)
           fi
-          if [ -f ci/script/pack_embedded_runtimes.py ]; then
-            python3 ci/script/pack_embedded_runtimes.py
-          fi
-      - name: Create isolated release signing key
+      - name: Restore permanent release signing key
+        id: sign
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/musa-release.jks" -storetype PKCS12 -alias musa -keyalg RSA -keysize 3072 -validity 3650 -storepass "MusaCI2026Temporary" -keypass "MusaCI2026Temporary" -dname "CN=Musa CI, OU=JolufaSoft, O=JolufaSoft, C=UY"
-          printf 'storeFile=%s\\nstorePassword=%s\\nkeyAlias=musa\\nkeyPassword=%s\\n' "$RUNNER_TEMP/musa-release.jks" "MusaCI2026Temporary" "MusaCI2026Temporary" > keystore.properties
-      - name: Assemble release APK without LeakCanary
+          if [ -z "${KEYSTORE_BASE64}" ] || [ -z "${KEYSTORE_PASSWORD}" ] || [ -z "${KEY_ALIAS}" ] || [ -z "${KEY_PASSWORD}" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Permanent keystore secrets are empty. Debug will build. A new release key will not be generated."
+            exit 0
+          fi
+          python3 ci/script/validate_release_signing.py --keystore-out ./keystore.jks --properties-out ./keystore.properties
+          echo "available=true" >> "$GITHUB_OUTPUT"
+      - name: Assemble Spanish debug APK
         shell: bash
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --stacktrace --no-daemon -PversionCode=266 -PversionName=2.6.6-musa-es
-          find app/build/outputs/apk/release -name '*.apk' -type f -size +1M -print
-      - name: Publish prerelease without Actions artifacts
+          ./gradlew :app:assembleDebug --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
+      - name: Assemble Spanish release APK
+        if: steps.sign.outputs.available == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 1000006 upgrades the installed muse-es.5 (versionCode 1000005).
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon -PversionCode=1000006 -PversionName=2.6.25-muse-es.6
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: musa-es-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - name: Upload release APK
+        if: steps.sign.outputs.available == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: musa-es-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+      - name: Publish prerelease
+        if: steps.sign.outputs.available == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          apk="$(find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M | head -n 1)"
-          test -n "$apk"
-          cp "$apk" Musa-es-release-test.apk
-          sha256sum Musa-es-debug.apk > SHA256SUMS.txt
+          debug="$(find app/build/outputs/apk/debug -name '*.apk' -type f -size +1M | head -n 1)"
+          release="$(find app/build/outputs/apk/release -name '*.apk' -type f -size +1M | head -n 1)"
+          test -n "$debug"
+          test -n "$release"
+          cp "$debug" Musa-es-debug.apk
+          cp "$release" Musa-es-release.apk
+          sha256sum Musa-es-debug.apk Musa-es-release.apk > SHA256SUMS.txt
           tag="musa-es-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$tag" Musa-es-debug.apk SHA256SUMS.txt \
+          gh release create "$tag" Musa-es-debug.apk Musa-es-release.apk SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Musa español release de prueba - build ${GITHUB_RUN_ID}" \
-            --notes "APK release sin LeakCanary, rama cursor/spanish-default-locale-f884. Firma temporal de CI: requiere desinstalar antes de actualizar y no debe usarse como firma de producción." \
+            --title "Musa español - build ${GITHUB_RUN_ID}" \
+            --notes "APK debug y release en español. versionCode 1000006 para actualizar muse-es.5 (1000005). La release usa la firma permanente del repositorio (KEYSTORE_BASE64); no se genera otra clave." \
             --prerelease
           echo "### APK Musa" >> "$GITHUB_STEP_SUMMARY"
           echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
+      - name: Release signing unavailable
+        if: steps.sign.outputs.available != 'true'
+        shell: bash
+        run: |
+          echo "Release APK was not built. KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD are empty in this repository. No replacement key was generated."
+          exit 1

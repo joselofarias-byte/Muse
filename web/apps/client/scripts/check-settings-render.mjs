@@ -187,7 +187,7 @@ try {
   );
 
   const failed = renderSettings({ loading: false, error: "PROTO-ERROR-Error de lectura" });
-  assert(failed.includes("PROTO-ERROR-Error de lectura") && failed.includes(">Inténtalo de nuevo<"), "Mostrar barra de error reintentable en caso de falla");
+  assert(failed.includes("PROTO-ERROR-Error de lectura") && failed.includes(">Reintentar<"), "Mostrar barra de error reintentable en caso de falla");
 
   if (failures > 0) throw new Error(`Error al establecer la aserción de representación (${failures} artículo)`);
   console.log("\nEstablezca las afirmaciones de representación en todas las pasadas (campo de protocolo de solo lectura del texto de la interfaz).");

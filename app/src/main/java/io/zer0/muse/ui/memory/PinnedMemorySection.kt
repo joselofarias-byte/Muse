@@ -12,9 +12,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.zer0.memory.pin.PinnedMemoryStore
+import io.zer0.muse.R
 import io.zer0.muse.ui.common.form.MuseTactileButton
 import io.zer0.muse.ui.common.icons.MuseIcons
 import io.zer0.muse.ui.common.surface.MuseSurface
@@ -41,7 +43,7 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(MuseIcons.pin, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                     Text(
-                        text = "Pinned Memories (${pinnedEntries.size})",
+                        text = stringResource(R.string.review_pinned_memories_count, pinnedEntries.size),
                         style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(start = 8.dp),
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -72,7 +74,7 @@ fun PinnedMemorySection(pinnedEntries: List<PinnedMemoryStore.PinnedEntry>, onRe
                             MuseTactileButton(
                                 icon = MuseIcons.trash,
                                 onClick = { onRemove(entry.id) },
-                                contentDescription = "Remove",
+                                contentDescription = stringResource(R.string.memory_unpin_cd),
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }

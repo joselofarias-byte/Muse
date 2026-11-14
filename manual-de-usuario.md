@@ -1,943 +1,968 @@
-# Muse Manual de usuario
+# Manual de usuario de Muse
 
-> **Versión aplicable**:v2.3.0(Organizado de acuerdo con la interfaz real de esta versión; si hay alguna discrepancia en la interfaz, prevalecerá la versión integrada en la aplicación)
+> **Versión de referencia**: v2.3.0. Está ordenado según la interfaz de esa versión. Si algo no coincide, manda lo que ves en la app.
 >
-> Este manual explica claramente cada función de Muse: dónde está la entrada, cómo operarla, qué efectos tendrá y dónde están los posibles errores. Usuario por primera vez, lea el Capítulo 1,2 Puedes comenzar a ejecutar con solo un capítulo; los capítulos restantes se pueden consultar bajo demanda, y cada capítulo es un capítulo independiente, por lo que no es necesario leerlo de principio a fin.
+> Aquí está cada función: dónde entra, cómo se usa, qué hace y dónde se traba. Si es la primera vez, con los capítulos 1 y 2 ya puedes usarla. El resto se consulta cuando haga falta. Cada capítulo se lee solo.
 >
-> También existe una versión simplificada de la guía gráfica en la aplicación:**ajustes → Tutoría**. Si no puede encontrar algo, busque directamente en la parte superior de la página de configuración.
+> Dentro de la app hay una guía más corta: **Ajustes → Tutorial**. Si no encuentras una opción, búscala en la parte de arriba de Ajustes.
 
-## Directorio
+## Contenido
 
-**primera parte · empezar**
-- [1. Instalación y apertura por primera vez.](#1-Instalación y apertura por primera vez.)
-- [2. Navegación de la interfaz y gestos.](#2-Navegación de la interfaz y gestos.)
-- [3. Modelos, proveedores y configuraciones de construcción](#3-Proveedores de modelos y configuraciones de compilación)
+**Primera parte. Empezar**
 
-**segunda parte · charla diaria**
-- [4. Envío de mensajes y operaciones de mensajes.](#4-Envío de mensajes y operaciones de mensajes.)
-- [5. Gestión de sesiones](#5-Gestión de sesiones)
-- [6. Voz y multimedia](#6-Voz y multimedia)
-- [7. Redes y navegación](#7-Redes y navegación)
+- [1. Instalar y abrir por primera vez](#1-instalar-y-abrir-por-primera-vez)
+- [2. La interfaz y los gestos](#2-la-interfaz-y-los-gestos)
+- [3. Modelos, proveedores y modelos auxiliares](#3-modelos-proveedores-y-modelos-auxiliares)
 
-**tercera parte · memoria y conocimiento**
-- [8. sistema de memoria](#8-sistema de memoria)
-- [9. base de conocimientos](#9-base de conocimientos)
+**Segunda parte. La conversación**
 
-**parte 4 · Herramientas y automatización**
-- [10. Herramientas y permisos](#10-Herramientas y permisos)
-- [11. Operaciones a nivel del sistema:UI Automatización y terminales](#11-Operaciones a nivel del sistemaui-Automatización y terminales)
+- [4. Enviar mensajes y actuar sobre ellos](#4-enviar-mensajes-y-actuar-sobre-ellos)
+- [5. Organizar las conversaciones](#5-organizar-las-conversaciones)
+- [6. Voz y multimedia](#6-voz-y-multimedia)
+- [7. Búsqueda y navegador](#7-búsqueda-y-navegador)
 
-**parte 5 · Asistente y Ecología**
-- [12. Asistente: utilizado por varias "personas" juntas](#12-El asistente puede ser utilizado por varias personas.)
-- [13. Chat grupal y colaboración entre múltiples agentes](#13-Chat grupal y más-agent-colaboración)
-- [14. Habilidades, complementos y MCP](#14-Complemento de habilidades y-mcp)
-- [15. Canales de mensajería: ponga IA en su IM](#15-canal de noticias-ai-en tu-im)
+**Tercera parte. Recuerdos y conocimientos**
 
-**sexta parte · vida y datos**
-- [16. La mensajería activa y su vida.](#16-La mensajería activa y su vida.)
-- [17. Apariencia y personalización](#17-Apariencia y personalización)
-- [18. Datos, respaldo y seguridad](#18-Copia de seguridad y seguridad de datos.)
-- [19. Versión web y más entradas](#19-Versión web y más entradas)
+- [8. Recuerdos](#8-recuerdos)
+- [9. Base de conocimientos](#9-base-de-conocimientos)
 
-**Otros**
-- [Preguntas frecuentes](#Preguntas frecuentes)
-- [Apéndice A: Copia de seguridad y formato de archivos de datos](#Apéndice-aFormatos de archivos de datos y copias de seguridad)
-- [Apéndice B: Glosario](#Apéndice-bGlosario)
+**Cuarta parte. Herramientas**
+
+- [10. Herramientas y permisos](#10-herramientas-y-permisos)
+- [11. Automatización de la interfaz y terminal](#11-automatización-de-la-interfaz-y-terminal)
+
+**Quinta parte. Asistentes**
+
+- [12. Asistentes](#12-asistentes)
+- [13. Chat grupal y equipos](#13-chat-grupal-y-equipos)
+- [14. Habilidades, complementos y MCP](#14-habilidades-complementos-y-mcp)
+- [15. Canales de mensajería](#15-canales-de-mensajería)
+
+**Sexta parte. El día a día y los datos**
+
+- [16. Mensajes proactivos](#16-mensajes-proactivos)
+- [17. Apariencia](#17-apariencia)
+- [18. Datos, copias y privacidad](#18-datos-copias-y-privacidad)
+- [19. La web y otras entradas](#19-la-web-y-otras-entradas)
+
+**Al final**
+
+- [Preguntas frecuentes](#preguntas-frecuentes)
+- [Apéndice A. Formatos de copia y de archivo](#apéndice-a-formatos-de-copia-y-de-archivo)
+- [Apéndice B. Glosario](#apéndice-b-glosario)
 
 ---
 
-## primera parte · empezar
+## Primera parte. Empezar
 
-### 1. Instalación y apertura por primera vez.
+### 1. Instalar y abrir por primera vez
 
 #### 1.1 Descargar e instalar
 
-- Requisitos del sistema:**Android 8.0 y arriba**.
-- Canal de descarga:GitHub Releases página o sitio web oficial [museai.ltd](https://museai.ltd).
-- Elija uno de los tres paquetes de instalación:
+- Hace falta **Android 8.0 o posterior**.
+- Descarga el APK desde GitHub Releases o desde [museai.ltd](https://museai.ltd).
+- Hay tres paquetes:
 
-| Paquete de instalación | Adecuado para quien |
+| Paquete | Para quién |
 | --- | --- |
-| `arm64-v8a` | La mayoría de los teléfonos celulares de los últimos años, la primera opción. |
-| `armeabi-v7a` | teléfonos celulares más antiguos |
-| `universal` | No consigo la versión universal a tiempo, es la más grande |
+| `arm64-v8a` | Casi todos los teléfonos de los últimos años. Empieza por este. |
+| `armeabi-v7a` | Teléfonos más viejos. |
+| `universal` | Si no sabes cuál es el tuyo. Es el más pesado. |
 
-Si se le solicita "Fuente desconocida" durante la instalación, simplemente permítalo. Este es el recordatorio normal de Android para instalaciones que no sean de tiendas de aplicaciones. La nueva versión se puede sobrescribir e instalar directamente y los datos no se perderán.
+Si Android pide permitir orígenes desconocidos, es el aviso normal cuando el APK no viene de una tienda. Puedes instalar una versión nueva encima de la anterior. Los datos se quedan.
 
-#### 1.2 Abierto por primera vez: siga las instrucciones
+#### 1.2 La primera vez
 
-Cuando lo abras por primera vez, pasarás por seis pantallas:
+La primera apertura tiene seis pantallas:
 
-1. **pagina de bienvenida**: Varias tarjetas de función, haga clic en "Configuración de inicio" después de leer.
-2. **Idioma y apariencia**: elige el idioma de la interfaz (español, inglés, portugués, japonés, coreano o ruso) y un tema. Puedes cambiarlos después.
-3. **Conózcanse primero**: Complete dos títulos, "Cómo debería llamarte" y "Dale un nombre". Se utilizarán en el diálogo y también se pueden dejar en blanco.
-4. **déjame recordarte**: Interruptor del sistema de memoria. Después de encenderlo, la memoria creciente se organizará automáticamente una vez finalizada la conversación. Ésta es la mayor diferencia entre Muse y las herramientas de chat comunes. Se recomienda mantenerlo encendido.
-5. **Conéctate al cerebro**: Seleccione un proveedor de servicios modelo, pegue la clave API y haga clic en "Probar conexión". Después del éxito, la lista de modelos se extraerá automáticamente y se compararán las capacidades.
-6. **Elija un modelo de caballo de batalla**: Busque y seleccione un modelo como predeterminado, luego haga clic en "Charlemos".
+1. **Bienvenida**. Unas tarjetas de lo que hace Muse. Al terminar, toca «Empezar».
+2. **Idioma y apariencia**. Elige el idioma (español, inglés, portugués, japonés, coreano o ruso) y un tema. Después se puede cambiar.
+3. **Cómo llamarte**. Dos campos: cómo debe llamarte y qué nombre le pones. Se usan en la conversación. Puedes dejarlos vacíos.
+4. **Recuerdos**. El interruptor de la memoria. Si lo dejas activado, al cerrar una conversación Muse ordena lo que dijo. Es la diferencia más grande con un chat común. Conviene dejarlo activado.
+5. **El modelo**. Elige un proveedor, pega la API Key y toca «Probar conexión». Si sale bien, Muse trae la lista de modelos y marca qué puede hacer cada uno.
+6. **El modelo de todos los días**. Busca uno, déjalo como predeterminado y toca «Charlemos».
 
-Puedes omitir cualquier paso y agregarlo más tarde:**ajustes → Modelos y capacidades → proveedor**.
+Puedes saltarte cualquier paso y completarlo después en **Ajustes → Modelos y capacidades → Proveedores**.
 
-#### 1.3 Conéctelo con un cerebro: proveedor de servicios modelo
+#### 1.3 Conectar un proveedor
 
-Muse No vende créditos modelo por sí solo, conecta varios proveedores de servicios modelo (OpenAI,Anthropic,Google,DeepSeek, Tongyi Qianwen, Zhipu, Doubao, etc. más de 40 ajustes preestablecidos).
+Muse no vende crédito de modelos. Se conecta a proveedores (OpenAI, Anthropic, Google, DeepSeek, Tongyi Qianwen, Zhipu, Doubao y más de 40 preajustes).
 
-- **API Key que es**: Credenciales para llamar al modelo. Vaya al sitio web oficial del proveedor de servicios para registrarse y vaya a "API Genere una cadena de caracteres en la página "Clave" y péguela en Muse. La mayoría de los proveedores de servicios le darán una cierta cantidad de crédito gratuito después del registro.
-- **¿Qué sucede si la conexión es exitosa?**:Muse Automáticamente extraerá la lista de modelos disponibles de este proveedor de servicios y marcará las capacidades de cada modelo (ver imágenes/inferencia/llamadas de herramientas) y luego cambiará a voluntad en la conversación.
-- **Proveedor de servicios personalizados**:cualquiera "OpenAI Las interfaces compatibles (incluidas estaciones de transferencia, Ollama local y servicios de construcción propia) se pueden agregar manualmente: complete el nombre, la dirección de la interfaz,API Key Eso es todo.
+- **La API Key** es la credencial para llamar al modelo. La generas en el sitio del proveedor, en la página de claves, y la pegas en Muse. Casi todos dan un crédito gratis al registrarte.
+- **Si la prueba sale bien**, Muse descarga los modelos de ese proveedor y marca si ven imágenes, si razonan y si llaman herramientas. Después puedes cambiar de modelo en la conversación.
+- **Un proveedor propio** sirve para cualquier interfaz compatible con OpenAI: una pasarela, Ollama en tu red o un servicio que armes tú. Completa el nombre, la dirección y la API Key.
 
-Consulte el Capítulo 3 para una gestión de proveedores más completa (multiclave, cuota, consulta de saldo, modelo de dibujo, etc.).
+El capítulo 3 cubre varias claves, la cuota, el saldo y los modelos de imagen.
 
-#### 1.4 primera frase
+#### 1.4 El primer mensaje
 
-Regrese a la página de inicio, escriba cualquier idea en el cuadro de entrada en la parte superior o haga clic en una conversación para enviar un mensaje. Puedes empezar así:
+Vuelve al inicio. Escribe en el campo de arriba o abre una conversación. Por ejemplo:
 
-- "Hola, preséntate"
-- "Recuerda: me gusta beber americano helado, pero no me gusta el cilantro" (a partir de ahora siempre lo recordaremos, ver Capítulo 8)
-- "Ayúdame a comprobar el tiempo en Beijing mañana" (Habilidad de la herramienta, consulte el Capítulo 10)
+- «Hola, preséntate.»
+- «Recuerda: me gusta el americano helado y no me gusta el cilantro.» A partir de ahí lo tiene presente. Ver el capítulo 8.
+- «Mira el tiempo de mañana en Montevideo.» Eso usa una herramienta. Ver el capítulo 10.
 
 ---
 
-### 2. Navegación de la interfaz y gestos.
+### 2. La interfaz y los gestos
 
-Muse La interfaz tiene sólo tres etapas principales:**Página de inicio (lista de conversaciones), página de chat, página de configuración**. Este capítulo los analiza uno por uno, además de una hoja de trucos sobre gestos.
+Hay tres pantallas grandes: **inicio** (la lista de conversaciones), **chat** y **Ajustes**.
 
-#### 2.1 Página de inicio (lista de conversaciones)
+#### 2.1 Inicio
 
-- **Cuadro de entrada superior**: Ingrese directamente cualquier idea, haga clic en "Nuevo y Enviar", se creará una nueva conversación y enviará esta oración como primer mensaje. Esta es la forma más sencilla de iniciar una conversación.
-- **Lista de conversación**: Organizados por grupos, de arriba a abajo están "Anclados/Recientes/Carpetas/Datos". Hay filtros en la parte superior: Todo/Pin/Archivo.
-- **tira de revisión**: Mostrará "La última vez que chateé con XX"……"", recordándote el tema de la última vez.
-- **Socios horizontalmente**: Una fila de avatares de asistente, haz clic en con quien quieras chatear; También puedes agregar nuevos socios desde aquí.
-- **bloque de atajos**: Base de conocimientos, tareas programadas, grabación rápida, traducción rápida y otras entradas.
-- **Organizar conversaciones**: Mantenga presionada cualquier conversación para abrir el menú (pegarse al principio/archivar/cambiar nombre/mover a carpeta/eliminar); el área superior se puede arrastrar y ordenar; Las carpetas admiten la creación, el cambio de nombre y la eliminación (cuando se elimina una carpeta, las conversaciones que contiene se moverán a "Desagrupadas" y no se eliminarán).
-- **Archivo**: Las conversaciones que no desees eliminar o ver se incluirán en el filtro "Archivar" después de archivarse. Puede cancelar el archivo en cualquier momento.
-- Ocasionalmente habrá una barra de aviso de "nueva versión disponible" en la parte superior de la página de inicio. Haga clic en él para ver el contenido actualizado.
+- **El campo de arriba**. Escribe y toca «Nuevo y enviar». Se crea una conversación y ese texto es el primer mensaje.
+- **La lista**. Va por grupos: fijadas, recientes, carpetas y archivadas. Arriba hay filtros: Todo, Fijadas y Archivadas.
+- **La tira de repaso**. Muestra de qué hablaron la última vez.
+- **Los asistentes**. Una fila de avatares. Toca con quién quieres hablar, o agrega uno desde ahí.
+- **Los accesos**. Base de conocimientos, tareas programadas, grabación rápida, traducción y otros.
+- **Ordenar**. Mantén pulsada una conversación para fijarla, archivarla, cambiarle el nombre, moverla de carpeta o eliminarla. Las fijadas se reordenan arrastrando. Si borras una carpeta, sus conversaciones pasan a «Sin carpeta». No se borran.
+- **Archivar**. Lo que no quieres borrar ni ver todo el tiempo queda en el filtro Archivadas. Se puede desarchivar.
+- A veces aparece arriba un aviso de versión nueva. Tócalo para ver qué cambió.
 
-#### 2.2 pagina de chat
+#### 2.2 El chat
 
-Dividido en tres partes de arriba a abajo:
+De arriba abajo:
 
-- **barra superior**:
-  - Izquierda: botón Atrás.
-  - Medio: título de la sesión actual.**Haga clic**Aparece la lista de sesiones,**Pulsación larga**Aparece una lista de asistentes (cambie una "persona" con quien chatear).
-  - Lado derecho: entrada del modelo actual y menú de tres puntos (seleccionar proveedores, comprimir contexto y otras operaciones están aquí).
-- **área de mensajes**: Tu conversación con la IA. Varias tarjetas en mensajes (Mood, tarjetas de tareas, tarjetas de productos, etc.) Consulte el Capítulo 4.
-- **Campo de entrada**: Signo más a la izquierda (panel de herramientas), cuadro de entrada en el medio, micrófono y botón de enviar a la derecha.
+- **La barra**.
+  - A la izquierda, atrás.
+  - En el centro, el título. **Tócalo** para ver la lista de conversaciones. **Mantén pulsado** para cambiar de asistente.
+  - A la derecha, el modelo actual y el menú de tres puntos (proveedor, comprimir el contexto y otras acciones).
+- **Los mensajes**. Ahí están las tarjetas de ánimo, de tareas y de artefactos. Ver el capítulo 4.
+- **El campo**. A la izquierda el signo más, en el centro el texto, a la derecha el micrófono y enviar.
 
-#### 2.3 Mapa de la página de configuración
+#### 2.3 El mapa de Ajustes
 
-La página de configuración está dividida en siete grupos. Hay un cuadro de búsqueda en la parte superior. Si no puede encontrarlo, puede buscar directamente (admite iniciales chinas y pinyin). Contenidos de cada grupo:
+Ajustes tiene siete grupos y un buscador arriba. El buscador también acepta iniciales y pinyin.
 
-| grupo | entrada interior |
+| Grupo | Qué hay |
 | --- | --- |
-| Chatear y mostrar | Chat (detalles de visualización y comportamiento), apariencia, transmisión de voz (TTS) |
-| mi asistente | asistente,Agent(Equipo de múltiples agentes), recursos del asistente (favoritos/libro mundial/mensajes rápidos/habilidades, etc.) |
-| Modelos y capacidades | Proveedores, modelos auxiliares, búsqueda en red, reconocimiento de voz. |
-| Memoria y mensajería activa | Mensajería activa, centro de memoria, recuperación de base de conocimientos. |
-| Herramientas y conexiones | Centro de conexión (canal de mensajes/MCP/complemento/permisos de herramientas), escucha de notificaciones, tareas programadas,UI Automatización, asistente de configuración de permisos, grabación rápida, teléfono celular pequeño, traducción |
-| Datos y privacidad | Gestión de datos, copia de seguridad, importación de datos, espacio de trabajo, chat de archivo,PII Protección de privacidad, uso compartido, proxy, registro de auditoría |
-| Acerca de y ayuda | Tutoriales, Acerca de, Buscar actualizaciones, Registros de depuración, Experimental, Estadísticas |
+| Chat y pantalla | Chat, apariencia y voz (TTS) |
+| Mi asistente | Asistentes, equipo de varios agentes y recursos (favoritos, libro de trasfondo, mensajes rápidos, habilidades) |
+| Modelos y capacidades | Proveedores, modelos auxiliares, búsqueda web y reconocimiento de voz |
+| Recuerdos y mensajes proactivos | Mensajes proactivos, centro de recuerdos y base de conocimientos |
+| Herramientas y conexiones | Centro de conexiones (canales, MCP, complementos y permisos), notificaciones, tareas, automatización de la interfaz, permisos, grabación rápida, teléfono virtual y traducción |
+| Datos y privacidad | Datos, copias, importación, espacio de trabajo, chats archivados, protección de datos personales, uso compartido, proxy y auditoría |
+| Acerca de y ayuda | Tutorial, acerca de, buscar actualizaciones, registros, experimental y estadísticas |
 
-La parte superior de la página de configuración es su tarjeta de cuenta (avatar y apodo, puramente local, sin registro).
+Arriba está tu tarjeta: avatar y apodo. Es local. No hay cuenta.
 
-#### 2.4 Hoja de referencia de gestos
+#### 2.4 Gestos
 
-Muchas operaciones quedan ocultas en la pulsación larga. Vale la pena guardar esta tabla:
+Muchas acciones están en la pulsación larga.
 
-| gesto | ubicación | Efecto |
+| Gesto | Dónde | Qué hace |
 | --- | --- | --- |
-| Haga clic | Título de la página de chat | Abra la lista de sesiones y cambie de sesión. |
-| Pulsación larga | Título de la página de chat | Abra la lista de asistentes y cambie de asistente |
-| Pulsación larga | cualquier mensaje | Menú de operación emergente (copiar/Cotización/bifurcación/eliminar, etc). |
-| Pulsación larga | Cuadro de entrada | Menú emergente relacionado con la entrada (incluido el modo de entrada de pantalla completa) |
-| Pulsación larga | botón más | Expandir/contraer barra de herramientas de acceso directo |
-| Pulsación larga | micrófono | Grabación; suelte para identificar, deslice hacia arriba para cancelar |
-| Pulsación larga | entrada de sesión | Fijar/Archivar/Cambiar nombre/Mover/Eliminar |
-| Pulsación larga | Artículos favoritos | Establecer etiquetas de grupo |
-| Teclas de volumen | Área de mensajes de chat | Desplazarse hacia arriba y hacia abajo (desactivado de forma predeterminada, disponible en Configuración) → Abrir en el chat) |
+| Tocar | Título del chat | Abre la lista y cambia de conversación |
+| Mantener pulsado | Título del chat | Cambia de asistente |
+| Mantener pulsado | Un mensaje | Copiar, citar, ramificar, eliminar y el resto del menú |
+| Mantener pulsado | El campo de texto | Acciones de entrada, incluida la pantalla completa |
+| Mantener pulsado | El signo más | Muestra u oculta la barra de accesos |
+| Mantener pulsado | El micrófono | Graba. Al soltar, transcribe. Desliza hacia arriba para cancelar |
+| Mantener pulsado | Una conversación del inicio | Fijar, archivar, renombrar, mover o eliminar |
+| Mantener pulsado | Un favorito | Pone una etiqueta de grupo |
+| Teclas de volumen | Los mensajes | Suben y bajan. Viene desactivado. Se enciende en Ajustes → Chat |
 
-> Consejo: el botón de edición de pantalla completa está oculto de forma predeterminada y se puede encontrar en Configuración → charlar → Actívelo en un comportamiento interactivo y escribir textos largos será mucho más cómodo.
+> El editor a pantalla completa viene oculto. Actívalo en **Ajustes → Chat → Comportamiento**. Para un texto largo se agradece.
 
 ---
 
-### 3. Modelos, proveedores y configuraciones de construcción
+### 3. Modelos, proveedores y modelos auxiliares
 
-#### 3.1 Cambiar modelo
+#### 3.1 Cambiar de modelo
 
-- En el lado derecho de la barra superior de la página de chat está la entrada del modelo, haz clic para abrirla y cambiar; la lista de modelos estará marcada con capacidades (visuales/razonamiento/llamada de herramientas), seleccione según sea necesario.
-- No importa si cambias de modelo en medio de la misma conversación. La memoria y el contexto no tienen nada que ver con el modelo y no producirá "amnesia".
-- Cada asistente también puede vincularse a su propio modelo predeterminado (consulte el Capítulo 12), y el cambio manual dentro de una sesión solo tiene efecto para la sesión actual.
+- A la derecha de la barra del chat está el modelo. Tócalo para cambiar. Cada uno muestra si ve, si razona y si usa herramientas.
+- Puedes cambiar de modelo en medio de la misma conversación. Los recuerdos y el contexto no dependen del modelo. No se olvida de ti.
+- Cada asistente puede tener su modelo (capítulo 12). Un cambio manual vale solo para esa conversación.
 
-#### 3.2 pensamiento profundo
+#### 3.2 Razonamiento
 
-Es adecuado para problemas como matemáticas, lógica, codificación y análisis de textos largos que requieren "pensar un paso más".
+Sirve para matemática, lógica, código y textos largos, cuando hace falta pensar un paso más.
 
-- **cambiar**: Botón de pensamiento profundo en el campo de entrada, haga clic en el interruptor.
-- **nivel**: Mantenga presionado el botón para recorrer los niveles. El presupuesto de pensamiento correspondiente a cada marcha es aproximadamente:
+- **Encenderlo**. El botón de razonamiento, junto al campo.
+- **El nivel**. Mantén pulsado el botón para recorrerlo. El presupuesto aproximado es:
 
-| nivel | Piense en el presupuesto (token) |
+| Nivel | Presupuesto |
 | --- | --- |
-| bajo | aprox. 1,000 |
-| en | aprox. 2,000 |
-| alto | aprox. 8,000 |
-| extremadamente alto | aprox. 16,000(Solo compatible con algunos modelos) |
+| Bajo | unos 1.000 tokens |
+| Medio | unos 2.000 |
+| Alto | unos 8.000 |
+| Muy alto | unos 16.000. Solo algunos modelos |
 
-- También hay dos niveles: "automático" y "apagado": el servidor lo determina automático y "apagado" significa que no hay ningún razonamiento. Algunos modelos no admiten inferencia y no funcionarán si están habilitados.
-- Si desea que active el pensamiento profundo de forma predeterminada:**ajustes → charlar → Avanzado → Pensamiento profundo por defecto**.
+- También están «automático» y «apagado». Automático lo decide el servidor. Apagado no razona. Si el modelo no razona, encenderlo no hace nada.
+- Para dejarlo activado de entrada: **Ajustes → Chat → Avanzado → Razonamiento por defecto**.
 
-#### 3.3 Modelo auxiliar (enrutamiento de tareas)
+#### 3.3 Modelos auxiliares
 
-Muse Hay muchas tareas pequeñas que hacer en segundo plano: crear títulos, comprimir diálogos, refinar recuerdos y reconocer imágenes.……Estos no tienen por qué ser los modelos más caros.
+Muse hace tareas chicas en segundo plano: títulos, comprimir el diálogo, ordenar recuerdos, describir una imagen. No tienen que ir al modelo más caro.
 
-**ajustes → Modelo auxiliar**Aquí puedes:
+En **Ajustes → Modelos auxiliares**:
 
-- Especificar modelos para los tres niveles de tareas:
-  - Gadgets: generar títulos, clasificación ligera y otras tareas sencillas;
-  - Grandes herramientas: compresión, recuperación de memoria, desmantelamiento de tareas y otros escenarios que requieren comprensión;
-  - Visual: Descripción del contenido de la imagen.
-- Vincule modelos por tipo de tarea: diálogo/razonamiento/programación/creación/análisis y active el "modelo de cambio automático" para que diferentes actividades caigan automáticamente en el modelo más apropiado.
-- Haga un clic en "Restablecer todos los enlaces" para volver a los valores predeterminados.
+- Tres niveles:
+  - Herramienta chica: títulos, clasificación y tareas simples.
+  - Herramienta grande: comprimir, recuperar recuerdos y partir una tarea.
+  - Visión: describir una imagen.
+- También puedes atar un modelo a un tipo de tarea (diálogo, razonamiento, código, creación, análisis) y activar el cambio automático.
+- «Restablecer todos los enlaces» vuelve a los valores de fábrica.
 
-> Se recomienda configurar al menos un modelo pequeño y económico para el archivo "gadget" para guardar mucho dinero a largo plazo.
+> Conviene tener un modelo chico y barato para las tareas simples. A la larga se nota en la factura.
 
-#### 3.4 El “carácter” de la respuesta: aleatoriedad, estilo, tono
+#### 3.4 Cómo responde
 
-**ajustes → charlar → generar estilo**:
+En **Ajustes → Chat → Estilo**:
 
-- **respuesta aleatoriedad**:0 Parcialmente segura, la respuesta es estable y predecible;2 Más creativo y divergente en respuestas.
-- **estilo de tono**: Conciso/Equilibrado/Detallado, controle el nivel de detalle de su respuesta.
-- **tono**: Neutral/amistoso/formal/humorístico.
+- **Azar**. Cerca de 0, la respuesta es estable. Cerca de 2, se abre más.
+- **Extensión**. Conciso, equilibrado o detallado.
+- **Tono**. Neutral, cercano, formal o con humor.
 
-#### 3.5 ¿Qué más hay en la página del proveedor?
+#### 3.5 La página del proveedor
 
-**ajustes → Modelos y capacidades → proveedor**Es una consola con funciones comunes:
+**Ajustes → Modelos y capacidades → Proveedores** concentra lo habitual:
 
-- Pruebe las conexiones y "verifique toda" la disponibilidad de todos los proveedores con un solo clic;
-- Capacidad para extraer la lista de modelos ascendentes, agregar modelos manualmente y editar modelos (ventana visual/razonamiento/herramientas/contexto);
-- **Múltiples grupos de claves**: El mismo proveedor puede guardar varias claves API y utilizarlas en rotación;
-- Protección de límite de velocidad: número máximo de solicitudes por minuto (RPM), el número máximo de concurrencias;
-- Consulta de saldo (el punto final del saldo debe configurarse en el proveedor);
-- Google Vertex AI Opciones de nivel empresarial como cuenta de servicio, encabezado/cuerpo de solicitud personalizado, etc.;
-- **Aquí también se configuran los modelos generados a partir de imágenes y vídeos.**(Sección de generación de imágenes/generación de videos en la página).
+- Probar un proveedor, o probarlos todos.
+- Traer la lista del proveedor, agregar un modelo a mano y editar qué ve, si razona, si usa herramientas y de qué tamaño es el contexto.
+- **Varias claves** del mismo proveedor, en rotación.
+- Límite de peticiones por minuto y de peticiones a la vez.
+- Consulta de saldo, si el proveedor tiene ese endpoint.
+- Opciones de empresa, como la cuenta de servicio de Google Vertex AI, y cabeceras o cuerpo de la petición.
+- **Imagen y video** se configuran en las secciones de generación de esa misma página.
 
 ---
 
-## segunda parte · charla diaria
+## Segunda parte. La conversación
 
-### 4. Envío de mensajes y operaciones de mensajes.
+### 4. Enviar mensajes y actuar sobre ellos
 
-#### 4.1 Método de envío
+#### 4.1 Cómo enviar
 
-- **escribiendo**: Ingrese en el cuadro de entrada y haga clic en Enviar. Disponible en Configuración → Habilite "Ingresar clave para enviar" en el chat (Ingresar clave para avanzar línea cuando esté desactivado).
-- **Voz**: Mantenga presionado el micrófono para hablar, suéltelo para cambiar automáticamente a texto (consulte el Capítulo 6 para obtener más detalles).
-- **Imágenes/Vídeos/Documentos**: haga clic en el signo más para abrir el panel de herramientas, donde puede tomar fotografías, seleccionar imágenes del álbum (varias imágenes a la vez) y enviar videos (50MB dentro) y enviar documentos.
-- **Artículo largo**: Al pegar una sección grande de texto,Muse Le preguntará "Si se adjunta como archivo" para evitar que el cuadro de entrada se explote; También puede mantener presionado el cuadro de entrada para seleccionar el modo de entrada de pantalla completa y escribir lentamente.
-- **También hay**: Referencia a un documento de base de conocimientos (@ Pídale que siga cierta información), solicite plantillas de palabras, habilidades, modo de dibujo (ingrese una descripción para generar directamente una imagen), delegue a un asistente, reinicie el contexto (borre la conversación actual y comience desde el principio).
+- **Texto**. Escribe y toca Enviar. En **Ajustes → Chat** puedes hacer que Enter envíe. Si está apagado, Enter baja de línea.
+- **Voz**. Mantén pulsado el micrófono, habla y suelta. El detalle está en el capítulo 6.
+- **Imagen, video o documento**. El signo más abre el panel: cámara, álbum (varias imágenes), video de hasta 50 MB y documentos.
+- **Un texto largo**. Si pegas mucho, Muse pregunta si lo adjuntas como archivo, para no reventar el campo. También puedes mantener pulsado el campo y pasar a pantalla completa.
+- **Además**: citar un documento de la base de conocimientos con @, una plantilla, una habilidad, el modo de dibujo, delegar a otro asistente o reiniciar el contexto.
 
-#### 4.2 Tres tipos de botones en la generación de respuestas
+#### 4.2 Mientras responde
 
-AI Mientras respondes, si tienes nuevas ideas:
+Si se te ocurre algo mientras responde:
 
-- **detenerse**: Interrumpe la respuesta actual.
-- **Únete al equipo**: coloque el nuevo mensaje en la cola para enviarlo, sin interrumpir su trabajo actual, y espere a que termine antes de enviarlo.
-- **interponer**: Interrumpa directamente la generación actual y envíe su nuevo mensaje inmediatamente.
+- **Detener**. Corta la respuesta.
+- **Encolar**. Deja el mensaje nuevo en espera y lo envía cuando termine.
+- **Interrumpir**. Corta lo que está generando y manda el mensaje nuevo ya.
 
-Si la última conversación se interrumpió a la mitad (por ejemplo, cambiando al fondo), cuando regrese a la sesión, aparecerá una barra que le indicará "Las últimas N llamadas a herramientas no se completaron". Puede elegir "Reanudar ejecución" para continuar ejecutándose o "Descartar" para borrarlo.
+Si la última vuelta quedó a medias (por ejemplo, pasaste la app a segundo plano), al volver aparece una barra: «Las últimas N llamadas no terminaron». Puedes reanudar o descartar.
 
-#### 4.3 comando de barra diagonal
+#### 4.3 Comandos con barra
 
-Escriba en el cuadro de entrada `/`, aparecerá una lista de comandos:
+Escribe `/` en el campo:
 
-| comando | función |
+| Comando | Qué hace |
 | --- | --- |
-| `/new` | Nueva sesión |
-| `/compact` | Comprimir el historial de la sesión actual |
-| `/reset` | restablecer contexto |
-| `/pin` | Anclar/desanclar |
-| `/archive` | Archivar la sesión actual |
+| `/new` | Nueva conversación |
+| `/compact` | Comprime el historial |
+| `/reset` | Reinicia el contexto |
+| `/pin` | Fija o desfija |
+| `/archive` | Archiva la conversación |
 
-#### 4.4 Pulsación larga sobre el mensaje: Menú de operación
+#### 4.4 El menú del mensaje
 
-Mantenga presionado cualquier mensaje para que aparezca el menú de operación. El contenido del menú variará ligeramente según el tipo de mensaje:
+Mantén pulsado un mensaje. El menú cambia según quién lo escribió.
 
-- **Todos**: Copiar, citar, anotar, delegar al asistente, bifurcar conversación, seleccionar (ingresar selección múltiple), información del mensaje (modelo/consumo de tiempo/uso de token), respuesta de expresión (me gusta, amor, risa, sorpresa, tristeza, enojo), colección.
-- **AI noticias**: También leer/detener lectura, eliminar.
-- **tu propio mensaje**: También edite, traduzca, comparta, reenvíe a la conversación, elimine.
+- **En todos**: copiar, citar, anotar, delegar, ramificar, seleccionar, ver datos (modelo, tiempo y tokens), reaccionar y guardar en favoritos.
+- **En una respuesta**: también leer en voz alta, dejar de leer y eliminar.
+- **En un mensaje tuyo**: también editar, traducir, compartir, reenviar y eliminar.
 
-Al eliminar, puede elegir "Eliminar sólo este mensaje" o "Eliminar este mensaje y todos los mensajes posteriores".
+Al eliminar puedes borrar solo ese mensaje, o ese y todo lo que viene después.
 
-#### 4.5 Reconstrucción y cambio de versión.
+#### 4.5 Regenerar
 
-- Si no está satisfecho con la respuesta de la IA, haga clic en "Regenerar" debajo del mensaje y responderá nuevamente con otra palabra.
-- Cada regeneración generará una nueva versión y la versión anterior no se perderá. El selector de versiones junto al mensaje le permite desplazarse por varias versiones de izquierda a derecha y volver a la versión anterior en cualquier momento.
+- Si la respuesta no te sirve, toca «Regenerar». Responde de nuevo.
+- Cada vez queda una versión. Las anteriores no se pierden. El selector al lado del mensaje las recorre.
 
-#### 4.6 Ramificación: las conversaciones pueden ramificarse
+#### 4.6 Ramificar
 
-- **conversación bifurcada**: Copia una nueva línea de diálogo a partir de un mensaje determinado, dejando intacto el diálogo original. Adecuado para la exploración de "¿Qué pasaría si hiciera la pregunta de manera diferente?"
-- Cuando edita un mensaje que ha enviado y lo reenvía, crecerá una nueva rama desde esa ubicación y se conservarán las preguntas y respuestas anteriores.
+- **Ramificar** copia una línea nueva desde un mensaje y deja la original intacta. Sirve para probar «¿y si lo pregunto de otra forma?».
+- Si editas un mensaje tuyo y lo vuelves a enviar, desde ahí crece una rama. Lo anterior se conserva.
 
-#### 4.7 Modo de selección múltiple
+#### 4.7 Selección múltiple
 
-Seleccione "Seleccionar" en el menú de pulsación larga para ingresar al modo de selección múltiple: aparece una casilla de verificación en el lado izquierdo del mensaje y aparece una barra de operaciones en la parte superior, que admite seleccionar todo, copiar por lotes, eliminar por lotes y exportar por lotes. Haga clic en "Salir" o haga clic en un espacio en blanco para regresar.
+En el menú largo, «Seleccionar» pone una casilla a la izquierda y una barra arriba: seleccionar todo, copiar, eliminar o exportar. Sales con «Salir» o tocando un espacio vacío.
 
-#### 4.8 Varios "fragmentos" en el mensaje.
+#### 4.8 Las tarjetas de un mensaje
 
-No te confundas cuando veas estas tarjetas por primera vez, todos son idiomas normales de Muse:
+La primera vez parecen de más. Son parte de Muse:
 
-- **Mood bloquear**:AI Actividades internas antes de responder (Vibe / Sparks / Reflections / Will Cuatro capas), plegadas de forma predeterminada, puedes ver lo que piensa cuando haces clic en él. Se puede encontrar en Configuración → charlar → La visualización de mensajes controla si se muestra o no.
-- **proceso de pensamiento**: La pista de pensamiento del modelo de inferencia también está colapsada de forma predeterminada.
-- **bloque de reflexión**:AI Autoevaluación de su respuesta (exactitud/integridad/tono).
-- **tarjeta de tarea**:AI Un registro del proceso de llamada a una herramienta, enumerando cómo se llamó, cuáles fueron los parámetros, cuál fue el resultado, si fue exitoso o falló; varias llamadas se resumirán en un "Registro de llamadas de herramientas", que se puede ampliar y ver una por una.
-- **tarjeta de producto**: Se generará una tarjeta para el código, los documentos y otros contenidos que valga la pena sacar por separado. Haga clic para ver y copiar en pantalla completa; todos los productos se archivan en el "espacio de trabajo" → Centro de productos".
-- **Tarjeta de cotización**: Cuando el mensaje cita un contenido (el texto original que citó o la fuente de la base de conocimientos que encontró), aparecerá en la parte superior de la burbuja.
-- **burbuja de traducción**: Hay un bloque plegable "Ver texto original" debajo de la traducción para comparar.
+- **Ánimo**. Lo que pasa antes de responder: Vibe, Sparks, Reflections y Will. Viene plegado. Se muestra o se oculta en **Ajustes → Chat → Mensajes**.
+- **Razonamiento**. El borrador interno de un modelo que razona. También plegado.
+- **Reflexión**. Cómo evalúa su propia respuesta: si está bien, si está completa y el tono.
+- **Tarea**. El registro de una herramienta: qué llamó, con qué parámetros, qué volvió y si salió bien. Varias llamadas se juntan en un registro que se abre de a una.
+- **Artefacto**. Código, un documento u otra pieza que conviene sacar de la burbuja. Se abre a pantalla completa y se copia. Todo queda en el espacio de trabajo, en el centro de artefactos.
+- **Cita**. Si el mensaje cita un texto o un fragmento de la base de conocimientos, aparece arriba de la burbuja.
+- **Traducción**. Debajo hay un bloque plegado, «Ver el original».
 
-#### 4.9 Colección
+#### 4.9 Favoritos
 
-Cualquier mensaje se puede guardar y luego ver y buscar en favoritos. Mantenga presionado un elemento en favoritos para configurar etiquetas de grupo para una fácil categorización.
+Cualquier mensaje se puede guardar y después buscar en Favoritos. Mantén pulsado uno para ponerle una etiqueta de grupo.
 
 ---
 
-### 5. Gestión de sesiones
+### 5. Organizar las conversaciones
 
-#### 5.1 Nuevo y cambiar
+#### 5.1 Crear y cambiar
 
-- Puedes crear una nueva conversación ingresando directamente tus pensamientos en el cuadro de entrada en la parte superior de la página de inicio; También puedes hacer clic en "Nueva tarea" para crear una.
-- Cambiar de conversación: haga clic en la lista en la página de inicio o haga clic en el título de la página de chat para que aparezca la lista y cambiar rápidamente.
-- Cada conversación es un mundo independiente: en una conversación hablamos de gatos, en otra hablamos de trabajo, sin interferir entre nosotros.
+- Escribe en el campo del inicio, o toca «Nueva tarea».
+- Para cambiar: toca la lista del inicio, o el título del chat.
+- Cada conversación va por su lado. En una hablas de gatos y en otra de trabajo.
 
-#### 5.2 Organizar: pin, carpeta, archivo
+#### 5.2 Fijar, carpetas y archivo
 
-- Mantenga presionado el menú emergente de conversación: Anclar/Archivar/Cambiar nombre/Mover a carpeta/Eliminar.
-- Las conversaciones fijadas se fijan en la parte superior de la lista y se pueden arrastrar y ordenar.
-- Las carpetas se utilizan para categorizar conversaciones por tema (trabajo, estudio, vida) y respaldar la creación, el cambio de nombre y la eliminación.
-- Si no deseas eliminar o leer las conversaciones, utiliza "Archivar" y colócalas en el filtro "Archivo" para recuperarlas en cualquier momento.
+- Mantén pulsada la conversación: fijar, archivar, renombrar, mover o eliminar.
+- Las fijadas quedan arriba y se reordenan arrastrando.
+- Las carpetas agrupan por tema. Se crean, se renombran y se borran.
+- Si no quieres verla ni borrarla, archívala. Vuelve cuando quieras.
 
 #### 5.3 Buscar
 
-- Búsqueda de la página de inicio: búsqueda de texto completo entre sesiones, búsqueda de palabras clave para localizar el mensaje específico.
-- Escriba en el cuadro de entrada `/` También puedes abrir directamente el panel de comandos y buscar conversaciones, mensajes y comandos.
-- La página de búsqueda completa admite más filtros y también puede filtrar por colecciones y etiquetas.
+- En el inicio, la búsqueda recorre todas las conversaciones y baja hasta el mensaje.
+- `/` en el campo abre el panel de comandos y también busca conversaciones y mensajes.
+- La búsqueda completa filtra además por favoritos y etiquetas.
 
-#### 5.4 Largas conversaciones y gestión del contexto.
+#### 5.4 Conversaciones largas
 
-La conversación se hizo cada vez más larga.Muse Existen algunas herramientas para garantizar que "lo recuerde sin recordarlo demasiado":
+Cuando el hilo crece, Muse tiene con qué no olvidar de más ni de menos:
 
-- **Compresión**:`/compact` comando o seleccione "Comprimir contexto" en el menú de tres puntos en la barra superior para comprimir conversaciones históricas en resúmenes. Al comprimir manualmente, puede establecer la cantidad de elementos retenidos e instrucciones adicionales.
-- **restricciones de contexto del piso**(ajustes → charlar → Gestión de contexto): utilizando "Su mensaje" como piso, conserve las conversaciones completas de los N pisos más recientes para evitar cortarlas a la mitad.
-- **Límite de ronda de herramientas**(ajustes → Chat): el número máximo de rondas de herramientas a las que la IA puede llamar en una sola ronda de conversación. El valor predeterminado es "ilimitado", las tareas largas no se interrumpirán a la mitad; también puede limitarse a 100 / 50 / 25 Ahorra consumo.
-- **Modo de rendimiento**: Solo se procesarán los últimos 50 mensajes para sesiones ultralargas. Desliza hacia arriba para cargar más mensajes, lo cual es más sencillo para teléfonos más antiguos.
-- **Límite de caché de sesión**: el número de copias de la sesión retenidas en segundo plano. Cuanto mayor sea el valor, más rápido será el cambio y mayor será el uso de memoria.
+- **Comprimir**. `/compact`, o «Comprimir contexto» en el menú de tres puntos. El historial pasa a un resumen. Puedes decir cuántos mensajes recientes se quedan y agregar una instrucción.
+- **Piso de contexto** (**Ajustes → Chat → Contexto**). Toma tus mensajes como piso y conserva completas las últimas N vueltas, para no cortar a la mitad.
+- **Tope de herramientas** (**Ajustes → Chat**). Cuántas rondas de herramientas caben en un turno. Por defecto no hay tope, así una tarea larga no se corta. También puedes poner 100, 50 o 25.
+- **Modo de rendimiento**. En un hilo muy largo solo se arman los últimos 50 mensajes. Al subir, carga más. En un teléfono viejo se siente.
+- **Caché de conversaciones**. Cuántas copias quedan en segundo plano. Más copias, cambio más rápido y más memoria.
 
-Cuando el contexto se comprime o trunca,Muse Se mantendrá un extracto histórico al frente y las cosas discutidas no desaparecerán de la nada.
+Cuando comprime o recorta, Muse deja un extracto adelante. Lo que ya se dijo no desaparece de golpe.
 
 #### 5.5 Eliminar
 
-Aparecerá un cuadro de confirmación antes de eliminar la sesión y la operación es irreversible. Un hábito seguro es: en caso de duda, utilice "Archivar", y cuando esté seguro de que no lo necesita, elimínelo; utilice copias de seguridad para cosas importantes (consulte el Capítulo 18).
+Antes de borrar hay una confirmación, y no se deshace. Si dudas, archiva. Borra cuando estés seguro. Lo importante va en una copia (capítulo 18).
+
+---
 
 ### 6. Voz y multimedia
 
-#### 6.1 Entrada de voz
+#### 6.1 Dictado
 
-- Mantenga presionado el micrófono en el lado derecho del campo de entrada, hable por teléfono y suéltelo para convertirlo automáticamente en texto; deslice hacia arriba para cancelar mientras graba; y los resultados del reconocimiento se pueden editar antes de enviarlos.
-- Dos modos:
-  - **motor del sistema**: Llame al servicio de voz integrado del teléfono sin configuración, pero es posible que algunos sistemas domésticos no lo admitan y aparecerá un cuadro de diálogo del sistema cada vez que se reconozca.
-  - **motor de nube**: en **ajustes → Modelos y capacidades → reconocimiento de voz** Seleccione DashScope, Paso,Whisper,Realtime Espere el servicio de reconocimiento de transmisión y complete la clave API correspondiente para obtener la experiencia de "hablar y transcribir" en la aplicación.
-- Algunos motores admiten reconocimiento multilingüe y puntuación automática.
+- Mantén pulsado el micrófono, habla y suelta. El texto se puede corregir antes de enviar. Durante la grabación, desliza hacia arriba para cancelar.
+- Dos motores:
+  - **El del sistema**. No se configura. Algunos teléfonos no lo tienen, y a veces abre el diálogo del sistema.
+  - **Uno en la nube**. En **Ajustes → Modelos y capacidades → Reconocimiento de voz** elige DashScope, Step, Whisper, Realtime u otro, y pega la clave. Transcribe mientras hablas, dentro de la app.
+- Algunos motores reconocen varios idiomas y ponen la puntuación solos.
 
-#### 6.2 Lectura en voz alta y clonación de voz.
+#### 6.2 Leer en voz alta
 
-- Respuesta de IA con pulsación larga → Leer/dejar de leer.
-- **ajustes → Chatear y mostrar → Transmisión de voz**: Cambio, velocidad de conversación, tono, idioma.
-- Además de la voz del sistema, el motor de voz también se puede conectar a sonidos en la nube:MiniMax,ElevenLabs,Fish Audio,DashScope, paso, etc., habrá elementos de ajuste más detallados (como emoción, estabilidad) después de conectarse.
-- **Clonación de voz**: Hay una entrada "Clonar voz" en la página de transmisión de voz. Después de la configuración, puede utilizar timbres personalizados para la lectura.
+- En una respuesta, mantén pulsado y elige leer, o deja de leer.
+- **Ajustes → Chat y pantalla → Voz**: interruptor, velocidad, tono e idioma.
+- Además de la voz del sistema puedes conectar MiniMax, ElevenLabs, Fish Audio, DashScope o Step. Al conectar aparecen ajustes finos, como la emoción o la estabilidad.
+- **Clonar una voz**. En la misma página, «Clonar voz». Después la lectura puede usar ese timbre.
 
-#### 6.3 Mirar imágenes: comprensión de imágenes y ayudas visuales.
+#### 6.3 Imágenes
 
-- **Publicar fotos directamente**: para modelos que admiten visión (GPT-4o,Gemini, Tongyi Qianwen VL, etc.) para enviar imágenes, puede leer imágenes, leer capturas de pantalla y analizar tablas; un mensaje puede contener varias imágenes.
-- **ayuda visual**: Si el modelo actual no admite la visualización de imágenes,Muse Llamará automáticamente al modelo visual que especifique, convertirá la imagen en una descripción estructurada y luego se la entregará al modelo actual para que pueda "ver indirectamente" la imagen. Entrada:**ajustes → Modelos y capacidades → Modelo auxiliar → ayuda visual**; Puede especificar un modelo visual y utilizar la "prueba de sonda" incorporada para verificar que el modelo realmente funciona.
-- **Escaneos e imágenes PDF**: OCR sin conexión incorporado, capaz de extraer texto en chino e inglés.
+- **Enviar la foto**. Si el modelo ve (GPT-4o, Gemini, Tongyi Qianwen VL y otros), lee la imagen, una captura o una tabla. Un mensaje puede llevar varias.
+- **Ayuda visual**. Si el modelo actual no ve, Muse llama al modelo de visión que elegiste, arma una descripción y se la pasa. Está en **Ajustes → Modelos y capacidades → Modelos auxiliares → Visión**. La prueba de sonda comprueba que ese modelo responde.
+- **PDF escaneado**. El OCR sin conexión saca texto en chino y en letras latinas.
 
-#### 6.4 Genera imágenes y vídeos.
+#### 6.4 Generar imagen y video
 
-- **modo de dibujo**: Abra el "Modo de dibujo" en el panel más e ingrese directamente la descripción de la imagen para generar la imagen; También puedes colgar imágenes de referencia y ajustar la calidad y el estilo.
-- El modelo utilizado para generar está en **ajustes → Modelos y capacidades → proveedor** Configure en la partición "Generación de imágenes/Generación de videos".
-- Generación de video: simplemente diga "Generar un video corto de xx" al proveedor de servicios admitido (duración de 5/10 segundos, dependiendo de las capacidades del proveedor de servicios).
+- **Dibujo**. En el panel del signo más, abre el modo de dibujo y describe la imagen. Puedes colgar una referencia y ajustar calidad y estilo.
+- El modelo de generación se elige en **Ajustes → Modelos y capacidades → Proveedores**, en imagen o en video.
+- Para un video, en un proveedor que lo soporte, pide un clip corto. La duración (5 o 10 segundos) depende del proveedor.
 
-#### 6.5 biblioteca de emoticonos
+#### 6.5 Stickers
 
-- Ubicación:**ajustes → charlar → biblioteca de emoticonos**.
-- Importar: seleccione un archivo zip,Muse Se ordenará automáticamente según la estructura de carpetas.
-- Conmutador y frecuencia: Puedes habilitarlo/deshabilitarlo en su conjunto, y ajustar la frecuencia de envío a "ocasional/normal/frecuente".
-- Efecto: al chatear, el asistente naturalmente sacará un emoticón cuando el ambiente sea adecuado, en lugar de forzarlo.
-
----
-
-### 7. Redes y navegación
-
-#### 7.1 búsqueda en internet
-
-- Dos interruptores: el valor predeterminado global está activado **ajustes → Modelos y capacidades → búsqueda en internet**;Para habilitarlo temporalmente, puede hacer clic directamente en el botón del globo en la barra de entrada.
-- Prioridad de búsqueda en modo automático:
-  1. Búsqueda nativa de modelos (se da preferencia a los modelos con capacidades de búsqueda integradas, que se han conectado a Gemini Grounding y OpenAI Responses, etc.);
-  2. La API de búsqueda que configuró;
-  3. Solución de problemas HTTP gratuita (Bing / Baidu).
-- Servicios de búsqueda accesibles:Tavily,Brave,Serper,Perplexity,Exa, Bocha, etc.; Después de configurar la clave, el modo automático volverá a aparecer en secuencia y filtrará automáticamente los resultados de baja calidad.
-- La estrategia de búsqueda es ajustable: el número máximo de búsquedas en una sola ronda, el número máximo de resultados obtenidos cada vez y el cambio automático al motor de respaldo después de una falla.
-- Hay "Búsqueda de prueba" y "Diagnóstico de búsqueda más reciente" en la página. Si no puede encontrar algo, puede ir allí para comprobarlo primero.
-- También puedes decirle directamente: "Ayúdame a buscar xxx".
-
-#### 7.2 Míralo en línea: navegador integrado
-
-- AI Al navegar por Internet aparecerá una pequeña cápsula en la parte superior de la página de chat, mostrando el título de la página web que se está visitando.
-- Haga clic en la cápsula: una imagen en tiempo real a pantalla completa, que se puede ver al pasar páginas, hacer clic o completar formularios.
-- Operaciones de página en pantalla completa: regresar (doblar la pantalla, continúa funcionando en segundo plano), actualizar, cerrar (finalizar completamente esta navegación, la cápsula desaparece).
-- Cada sesión tiene una página de navegador independiente y no interfiere entre sí.
+- **Ajustes → Chat → Stickers**.
+- Importa un ZIP. Muse lo ordena según las carpetas.
+- Puedes activar o desactivar el paquete, y la frecuencia: de vez en cuando, normal o seguido.
+- En el chat, el asistente manda un sticker cuando el momento lo pide. No lo fuerza.
 
 ---
 
-## tercera parte · memoria y conocimiento
+### 7. Búsqueda y navegador
 
-### 8. sistema de memoria
+#### 7.1 Buscar en la web
 
-Aquí es donde Muse se diferencia de otras herramientas de chat:**realmente te recuerda**. Dices algo casualmente y se retoma semanas después.
+- El interruptor global está en **Ajustes → Modelos y capacidades → Búsqueda web**. En el chat, el globo de la barra lo enciende solo para ese momento.
+- En automático, el orden es:
+  1. La búsqueda nativa del modelo (Gemini Grounding, OpenAI Responses y otras que ya vienen conectadas).
+  2. La API que configuraste.
+  3. El rastreo gratis (Bing o Baidu).
+- También entran Tavily, Brave, Serper, Perplexity, Exa y Bocha. Con la clave puesta, el modo automático prueba el siguiente si uno falla y descarta resultados flojos.
+- Puedes limitar cuántas búsquedas hay en un turno, cuántos resultados trae cada una y si cambia de motor al fallar.
+- En la misma página están «Probar búsqueda» y el diagnóstico de la última. Si algo no aparece, mira ahí primero.
+- También puedes decirlo: «Busca xxx».
 
-#### 8.1 ¿Cómo crecen los recuerdos?
+La guía para pedir cada clave está en [guia-api-de-busqueda.md](guia-api-de-busqueda.md).
 
-La información de la conversación pasará por un proceso de fondo:
+#### 7.2 El navegador de la conversación
+
+- Cuando el asistente navega, arriba del chat aparece una cápsula con el título de la página.
+- Tócala para ver la página en vivo, a pantalla completa: pasar, tocar o completar un formulario.
+- Atrás pliega la vista y el navegador sigue en segundo plano. Actualizar recarga. Cerrar termina esa navegación y la cápsula se va.
+- Cada conversación tiene su propio navegador.
+
+---
+
+## Tercera parte. Recuerdos y conocimientos
+
+### 8. Recuerdos
+
+Acá Muse se separa de un chat común: **te recuerda**. Algo que dices de paso puede volver semanas después.
+
+#### 8.1 Cómo crecen
 
 ```
-dialogo → extracción de hechos → resumen de desplazamiento → compilar agregación → comprensión profunda
+conversación → hechos → resumen acumulado → compilación → comprensión
 ```
 
-- Lo que usted dijo será resumido en "hechos" y marcado con importancia;
-- Las conversaciones largas se comprimirán en "resúmenes desplazables" y no se descartarán por ser demasiado largas;
-- El trasfondo "compila" hechos y resúmenes en cognición de nivel superior, que se inyecta según su relevancia en la siguiente conversación;
-- Se protegerá la información clave (personas importantes, preferencias, hábitos, asuntos médicos y financieros); Los asuntos triviales cotidianos se olvidarán lentamente como las personas.
+- Lo que dices se resume en hechos, con una importancia.
+- Una conversación larga se comprime en un resumen. No se tira por larga.
+- En segundo plano, Muse compila hechos y resúmenes en algo más general, y lo mete en la siguiente conversación si viene al caso.
+- Lo importante (personas, gustos, hábitos, salud, dinero) queda protegido. Lo cotidiano se olvida, como le pasa a una persona.
 
-> **Consejos importantes**: Los arreglos se están realizando lentamente en segundo plano y es posible que lo que acabo de decir aún no se haya almacenado. Lo que realmente importa, simplemente dile "Recuerda:xxx”, se solucionará inmediatamente sin pasar por el proceso en segundo plano.
+> El orden del fondo es lento. Lo que acabas de decir puede no estar guardado todavía. Si importa, di «Recuerda: …». Eso se fija al momento.
 
-#### 8.2 panel de memoria
+#### 8.2 El centro de recuerdos
 
-Entrada:**ajustes → centro de memoria**. Aquí puedes:
+**Ajustes → Centro de recuerdos**:
 
-- Explore y busque todos los recuerdos jerárquicamente por "actual/corto plazo/largo plazo/metahecho"; filtrar por tiempo, importancia y espacio de memoria;
-- Además de la lista, hay vistas de línea de tiempo y "Constelación de memoria"; la línea de tiempo se puede filtrar por "Todos/Hechos/Resumen/Hitos";
-- Editar o eliminar cualquier elemento; agregar manualmente nuevos recuerdos; ajustar la importancia (normal/importante/crítico "nunca olvidar");
-- Se puede rastrear cada memoria hasta su origen, tiempo de almacenamiento y número de visitas;
-- Cada memoria tiene un historial de modificaciones y puedes "volver a esta versión".
+- Ver y buscar por actual, corto plazo, largo plazo y metahecho. Filtra por fecha, importancia y espacio.
+- Además de la lista hay una línea de tiempo y una constelación. La línea de tiempo filtra por todo, hechos, resúmenes o hitos.
+- Editar, borrar o agregar. La importancia puede ser normal, importante o crítica («no olvidar»).
+- Cada recuerdo muestra de dónde salió, cuándo se guardó y cuántas veces se usó.
+- Hay historial de cambios, y puedes volver a una versión anterior.
 
-Los parámetros detallados de la memoria también se encuentran en la configuración de la memoria: interruptor maestro, presupuesto de memoria, coeficiente de atenuación (cuanto mayor, más rápido se olvida), índice de olvido, bonificación de acierto, etc. También puede restaurar el valor predeterminado con un solo clic.
+Ahí mismo están el interruptor general, el presupuesto, la velocidad del olvido, el índice de olvido y el premio por uso. Se puede volver a los valores de fábrica.
 
-**espacio de memoria**: Separar recuerdos para diferentes propósitos (como trabajo, vida, dedicados a un determinado asistente) para que no se crucen.
+**Espacios**. Separan recuerdos de trabajo, de la vida o de un asistente, para que no se mezclen.
 
-#### 8.3 Memoria fija (decir "recordar")
+#### 8.3 Fijar un recuerdo
 
-- Si el diálogo dice "Recuerda: el cumpleaños de mi madre es el 3 de mayo", lo recordará inmediatamente usando un método de memoria fija y lo traerá consigo en cada diálogo.
-- Las memorias fijas también se pueden gestionar manualmente: Configuración → centro de memoria.
+- Si dices «Recuerda: el cumpleaños de mi madre es el 3 de mayo», queda fijado y entra en cada conversación.
+- También se administran a mano en el centro de recuerdos.
 
-#### 8.4 Biblioteca de experiencias
+#### 8.4 Experiencias
 
-- Ubicación:**ajustes → centro de memoria → Biblioteca de experiencias**.
-- Precipite "Este tipo de problema se abordará en el futuro" en elementos (título, texto, clasificación, etiquetas), y el asistente se referirá a él cuando encuentre tareas similares.
-- Adecuado para escenarios en los que es necesario corregirlo repetidamente; se puede activar y desactivar en la configuración (activarlo requerirá un poco de contexto).
+- **Ajustes → Centro de recuerdos → Experiencias**.
+- Guardas «esta clase de problema se resuelve así»: título, texto, tipo y etiquetas. En una tarea parecida, el asistente lo consulta.
+- Sirve cuando tuviste que corregir lo mismo varias veces. Se puede apagar. Encendido, gasta un poco de contexto.
 
-#### 8.5 Lo que se recuerda y lo que no se recuerda
+#### 8.5 Qué queda y qué no
 
-- La memoria sólo existe en tu teléfono celular y no se carga en ningún servidor;
-- Cambiar de modelo o de proveedor no afecta la memoria;
-- La memoria de datos del asistente y las conversaciones recientes están aisladas por el asistente de forma predeterminada; el "asistente predeterminado" aún puede usar el grupo de memoria global.
-- De forma predeterminada, otros asistentes recién creados no leerán retratos globales de usuarios, recuerdos fijados ni experiencias compartidas; puede activar explícitamente "Usar memoria global" en la configuración del asistente. Al actualizar, los asistentes existentes que no sean los predeterminados también se cambiarán al aislamiento predeterminado, pero sus memorias de hechos existentes no se eliminarán.
-
----
-
-### 9. base de conocimientos
-
-Lánzale tu propia información (documentos, manuales, notas, contratos). Cuando haga preguntas, buscará la información antes de responder y marcará un párrafo citado.
-
-#### 9.1 Importar documentos
-
-- Entrada:**ajustes → Búsqueda de base de conocimientos**.
-- Texto de soporte,PDF,Word,PPT,Excel,ePub y otros formatos comunes; Los documentos escaneados y los archivos PDF basados ​​en imágenes se someten a OCR sin conexión.
-- Al importar, puede elegir a qué base de conocimientos ingresar (la base de conocimientos predeterminada o la suya propia).
-- Base de conocimientos Haga clic en "Base de conocimientos" → carpeta → Explorar documentos; importar ZIP,7Z O RAR creará una nueva base de conocimientos basada en el nombre del paquete comprimido y conservará la estructura del directorio dentro del paquete. Los documentos se pueden mover a carpetas virtuales o importar directamente a la carpeta abierta actualmente; La reorganización del catálogo no moverá el texto original ni lo volverá a indexar.
-- La importación pasará por dos pasos: fragmentación automática → Generar índice vectorial. El progreso mostrará "N bloques indexados".
-- Cuando un solo archivo es demasiado grande, se le preguntará: divídalo en partes más pequeñas y cárguelas en lotes, o cárguelas en lotes. **ajustes → Búsqueda de base de conocimientos → analizador de documentos** Cambie al analizador de la nube (también es compatible con MinerU, bueno para archivos PDF académicos, fórmulas y tablas).
-- **Reindexar**: Si se han modificado los parámetros de bloqueo o se ha modificado el texto del documento, es necesario reconstruir el índice para buscar contenido nuevo. La reconstrucción eliminará el índice anterior y lo regenerará, lo que lleva mucho tiempo. Se recomienda funcionar mientras la alimentación está enchufada.
-
-#### 9.2 Encuéntrelo con precisión: fragmentación y recuperación
-
-- **Parámetros de fragmentación**(ajustes → Búsqueda en la base de conocimientos): tamaño de fragmento, superposición de fragmentos,Markdown Percepción, fragmentación por fichas (una mezcla de chino e inglés es más precisa).
-- **Búsqueda híbrida**:Palabra clave(BM25) y recuperación bidireccional de similitud de vectores,RRF Fusion, los pesos vectoriales son ajustables.
-- Más avanzadas son la diversidad y el reordenamiento de MMR (Rerank), recuperación del presupuesto del token y otros modificadores, se recomienda el valor predeterminado.
-- Los fragmentos encontrados tendrán una puntuación de relevancia; el umbral de relevancia se puede ajustar para evitar la intrusión de contenido incierto.
-
-#### 9.3 usarlo en conversaciones
-
-- **Búsqueda automática**: Verifique automáticamente la base de conocimientos cuando se le hagan preguntas relevantes y la respuesta tendrá una tarjeta de referencia ("Nombre del documento"· fragmento #N · puntuación).
-- **@ Especificar documento**: Seleccione "Base de conocimientos de citas" en el panel más y especifique solo ciertos artículos para las respuestas.
-- La inyección automática se puede desactivar en la configuración, pero `knowledge_search` La herramienta siempre está disponible y seguirá siendo consultada cuando sea necesario.
+- Los recuerdos viven en el teléfono. No se suben a un servidor de Muse.
+- Cambiar de modelo o de proveedor no los toca.
+- Por defecto, los hechos y las conversaciones recientes de un asistente son suyos. El asistente predeterminado sí puede usar el conjunto global.
+- Un asistente nuevo no lee el retrato global, los recuerdos fijados ni las experiencias compartidas, salvo que actives «Usar la memoria global». Al actualizar, los asistentes que no son el predeterminado pasan a ese aislamiento. Los hechos que ya tenían no se borran.
 
 ---
 
-## parte 4 · Herramientas y automatización
+### 9. Base de conocimientos
+
+Le das documentos, manuales, notas o contratos. Cuando preguntas, busca ahí antes de responder y marca el fragmento que citó.
+
+#### 9.1 Importar
+
+- **Ajustes → Base de conocimientos**.
+- Entran texto, PDF, Word, PowerPoint, Excel, ePub y otros formatos habituales. Un escaneo o un PDF de imágenes pasa por el OCR sin conexión.
+- Al importar eliges la base: la de siempre o una tuya.
+- En la base, entra a una carpeta para ver los documentos. Un ZIP, 7Z o RAR crea una base con el nombre del archivo y conserva las carpetas de adentro. Puedes mover un documento a una carpeta virtual, o importarlo en la carpeta que tengas abierta. Reordenar el índice no mueve el archivo ni lo vuelve a indexar.
+- La importación parte el texto y arma el índice. El avance dice cuántos fragmentos van.
+- Si un archivo es demasiado grande, puedes partirlo o cambiar el analizador en **Ajustes → Base de conocimientos → Analizador**. El de la nube, MinerU entre ellos, se lleva mejor con un PDF académico, con fórmulas y con tablas.
+- **Volver a indexar**. Si cambias el tamaño de los fragmentos o el texto del documento, hay que reconstruir el índice. Borra el anterior y tarda. Mejor con el teléfono enchufado.
+
+#### 9.2 Fragmentos y búsqueda
+
+- **Ajustes → Base de conocimientos**: tamaño del fragmento, cuánto se solapan, si respeta Markdown y si parte por tokens. Con chino y letras latinas mezclados, los tokens afinan más.
+- **Búsqueda mixta**: palabras (BM25) y similitud de vectores, unidas con RRF. El peso del vector se ajusta.
+- Más adentro están la diversidad MMR, el reorden (rerank) y el presupuesto de tokens. Los valores de fábrica alcanzan.
+- Cada fragmento trae una puntuación. El umbral evita que entre algo flojo.
+
+#### 9.3 Usarla en el chat
+
+- **Sola**. Si la pregunta toca esos documentos, la respuesta trae una cita: nombre, fragmento y puntuación.
+- **Con @**. En el panel del signo más, «Citar la base de conocimientos» limita la respuesta a unos documentos.
+- Puedes apagar la inyección automática. La herramienta `knowledge_search` sigue disponible y el asistente la usa cuando hace falta.
+
+---
+
+## Cuarta parte. Herramientas
 
 ### 10. Herramientas y permisos
 
-#### 10.1 cual es la herramienta
+#### 10.1 Qué es una herramienta
 
-AI No sólo puedes hablar, sino que también puedes hacerlo: comprobar el tiempo, enviar mensajes de texto, configurar despertadores, buscar en la web, leer y escribir archivos, generar imágenes y operar pantallas de teléfonos celulares.……Todo esto se hace mediante "herramientas". Incorporado en la versión actual **141 herramientas**, cubriendo aproximadamente:
+El asistente no solo habla. Mira el tiempo, manda un mensaje, pone una alarma, busca, lee y escribe archivos, genera una imagen o toca la pantalla. Eso lo hacen las herramientas. Esta versión trae **141**. En grande:
 
-- **vida**: Clima, hora, calculadora, calendario, despertador, cronómetro, recordatorio de programación, mapa, posicionamiento, teléfono, mensaje de texto, correo electrónico, libreta de direcciones;
-- **Equipo**:Batería, red, almacenamiento,CPU, sensor, brillo, volumen, linterna, vibración, aplicación de primer plano,Wi-Fi / Estado de Bluetooth;
-- **Procesamiento de contenido**: Portapapeles, traducción, código QR, generación de contraseña,Base64 / Herramientas Hash/JSON/URL;
-- **Documentos e información**: Lectura y escritura de archivos del espacio de trabajo, resolución de enlaces,PDF Análisis, biblioteca de recursos, registro rápido, tareas pendientes;
-- **generación de medios**: Imágenes, vídeos, lecturas de voz, emoticonos;
-- **Redes**: Búsqueda, rastreo web, automatización del navegador (pasar página, clics, completar formularios, capturas de pantalla);
-- **memoria**: Reparar memoria, guardar y eliminar memoria, buscar memoria y acumular experiencia;
-- **Automatización**: Tareas programadas, notificaciones, comandos del sistema, terminal,UI Automatización (pantalla operativa);
-- **ecología**: Canal de mensajes, conector, mercado de complementos,MCP Gerencia, subagente.
+- **El día a día**: clima, hora, calculadora, calendario, alarma, cronómetro, recordatorios, mapas, ubicación, teléfono, SMS, correo y contactos.
+- **El aparato**: batería, red, almacenamiento, CPU, sensores, brillo, volumen, linterna, vibración, la app de adelante, Wi-Fi y Bluetooth.
+- **Texto**: portapapeles, traducción, código QR, contraseñas, Base64, hash, JSON y URL.
+- **Archivos**: el espacio de trabajo, enlaces, PDF, la biblioteca, notas rápidas y tareas.
+- **Medios**: imágenes, video, lectura en voz alta y stickers.
+- **La web**: búsqueda, rastreo y el navegador (pasar, tocar, formularios, capturas).
+- **Recuerdos**: fijar, guardar, borrar, buscar y guardar una experiencia.
+- **Automatización**: tareas programadas, notificaciones, comandos, terminal y la interfaz.
+- **Alrededor**: canales, conectores, complementos, MCP y subagentes.
 
-No es necesario recordar ningún nombre al usarlo: simplemente use el lenguaje natural para ordenarlo y seleccionará las herramientas, desmantelará los pasos y verá los resultados por sí solo. El proceso se puede ver en el diálogo (tarjeta de tareas, ver 4.8).
+No hace falta saber el nombre. Lo pides en castellano. El asistente elige la herramienta, parte el trabajo y muestra el resultado en la tarjeta de tarea (4.8).
 
-#### 10.2 Estratificación de permisos: primer vistazo al "estado listo"
+#### 10.2 Si no está lista
 
-Existe una categoría de herramientas que requieren autorización adicional del sistema (operar pantallas, ejecutar comandos, etc.). Cuando no hay autorización,Muse Se marcará como "no listo"; fallará inmediatamente cuando se le llame y le indicará dónde ir para abrir los permisos. No seguirá dando vueltas en círculos ni fallará silenciosamente. Para conocer el método de activación, consulte el asistente de configuración de permisos en el Capítulo 11.
+Algunas piden un permiso del sistema (tocar la pantalla, correr un comando). Sin ese permiso, Muse las marca como no listas. Si se las llama, fallan enseguida y dicen dónde activarlas. No dan vueltas ni fallan en silencio. El capítulo 11 explica cómo abrirlas.
 
-#### 10.3 Aprobación: Si hay alguna influencia, consultar con antelación
+#### 10.3 Aprobar antes de actuar
 
-- **Tres modos generales**(ajustes → charlar → aprobación de herramienta):
-  - Delegación completa de autoridad: todas las herramientas se llaman directamente sin preguntar (adecuado para un conjunto de herramientas confiables);
-  - Aprobación a pedido (recomendado): haga pequeñas cosas seguras automáticamente y solicite primero acciones de alto riesgo;
-  - Modo estricto: excepto las consultas de solo lectura, todas las llamadas a herramientas requieren su confirmación.
-- **estrategia de herramienta única**(ajustes → Aprobación de herramientas; también disponible en el Centro de Conexión → Permisos de herramientas (Introducir): establezca "Permitir/Preguntar/Denegar" por separado para cada herramienta. La página se muestra por nivel de riesgo y se cuenta el número de cada estrategia.
-- La ventana emergente de aprobación tiene una cuenta regresiva y será rechazada automáticamente si caduca (seguridad).
-- Las acciones de alto riesgo, como enviar mensajes de texto, marcar y eliminar archivos, se deben solicitar primero en "Aprobación a pedido".
+En **Ajustes → Chat → Aprobación de herramientas** hay tres modos:
 
-#### 10.4 Trabajar de forma mesurada
+- Confianza total. Llama todo sin preguntar. Solo si el conjunto te resulta seguro.
+- Preguntar cuando haga falta. Es el recomendado. Lo inofensivo pasa solo. Lo riesgoso pregunta.
+- Estricto. Salvo una lectura, todo pide confirmación.
 
-- Para guardar contexto,Muse No todas las herramientas se incluirán en el modelo: las herramientas de uso común están disponibles directamente y las habilidades impopulares se "encontrarán" primero cuando sea necesario (find_tools) y llame nuevamente.
-- Cuando la misma herramienta falla repetidamente, o no hay progreso muchas veces consecutivas, se detendrá automáticamente y explicará los motivos, y no continuará actualizando la pantalla.
-- Las herramientas de comando del sistema están sujetas a una lista blanca (consulte el Capítulo 11); Los permisos de extensiones externas, como los complementos, se administran de forma independiente (consulte el Capítulo 14).
+También puedes fijar permitir, preguntar o denegar **una herramienta**. Está en Ajustes y en el centro de conexiones. La página agrupa por riesgo y cuenta cuántas hay en cada política.
+
+La ventana de aprobación tiene una cuenta atrás. Si se vence, se rechaza. Enviar un SMS, llamar o borrar un archivo pregunta en el modo recomendado.
+
+#### 10.4 Sin pasarse
+
+- Para no llenar el contexto, el modelo no recibe las 141 de entrada. Las de uso común están. El resto se busca con `find_tools` y después se llama.
+- Si la misma herramienta falla seguido, o no hay avance, se detiene y dice por qué.
+- Los comandos del sistema pasan por una lista blanca (capítulo 11). Los complementos tienen sus propios permisos (capítulo 14).
 
 ---
 
-### 11. Operaciones a nivel del sistema:UI Automatización y terminales
+### 11. Automatización de la interfaz y terminal
 
-Para permitir que Muse "lo haga por usted", primero debe abrir los permisos del sistema. Este capítulo habla sobre cómo abrir permisos y qué se puede hacer después de abrirlos.
+Para que Muse haga cosas en el teléfono, primero hay que abrir permisos.
 
-#### 11.1 Asistente de configuración de permisos
+#### 11.1 El asistente de permisos
 
-Entrada:**ajustes → Asistente de configuración de permisos**. Cuatro canales, de bajo a alto:
+**Ajustes → Asistente de permisos**. De menos a más:
 
-| canal | Método de activación | ¿Qué se puede hacer? |
+| Canal | Cómo se abre | Qué permite |
 | --- | --- | --- |
-| Servicios de accesibilidad | Activar un interruptor en la configuración del sistema | Lea el contenido de la pantalla, simule clics y diapositivas,UI Es suficiente para la operación. |
-| Shizuku | Instale Shizuku y autorícelo (recomendado) | Comandos a nivel de sistema, capturas de pantalla y operaciones más silenciosas |
-| Root | El dispositivo está rooteado y se puede solicitar con un clic en el asistente. | Control total del sistema con acceso a otros datos de la aplicación. |
-| Termux(extensión opcional) | Instalar Termux + configuración de una línea | Entorno Linux completo (apt / pip / gcc etc) |
+| Accesibilidad | Un interruptor del sistema | Leer la pantalla, tocar y deslizar |
+| Shizuku | Instalar Shizuku y autorizar. Es el recomendado | Comandos, capturas y acciones más quietas |
+| Root | Un teléfono con root. Se puede pedir desde el asistente | Control del sistema y datos de otras apps |
+| Termux | Instalar Termux y una línea de configuración | Un Linux completo: apt, pip, gcc |
 
-- El "Nivel de permiso actual" se mostrará en la parte superior del asistente y cada elemento tiene botones de activación y detección de estado;
-- Termux Se requiere configuración única: ejecutar en Termux
+Arriba se ve el nivel actual. Cada canal tiene un botón para abrirlo y otro para comprobarlo.
 
-  ```
-  echo 'allow-external-apps = true' >> ~/.termux/termux.properties
-  ```
+Termux se configura una vez. En Termux:
 
-  Y reinicie Termux; el asistente detectará automáticamente si la configuración ha tenido efecto.
+```
+echo 'allow-external-apps = true' >> ~/.termux/termux.properties
+```
 
-#### 11.2 UI Automatización
+Reinicia Termux. El asistente detecta si quedó aplicado.
 
-Entrada:**ajustes → UI Automatización**. Hay tres capas de tarjetas de habilidad en la página (Accesibilidad / Shell (Shizuku)/ Root), muestran sus respectivos estados y el botón "Ir a Abrir";Root Las solicitudes de autorización se pueden iniciar directamente dentro de la página.
+#### 11.2 Automatizar la interfaz
 
-hay en el fondo**"Prueba de lectura de pantalla"**: Al hacer clic en él, se leerá la pantalla y se mostrará la aplicación actual, la cantidad de controles, la resolución y la fuente de datos, que se utiliza para verificar que los permisos realmente se hayan aprobado.
+**Ajustes → Automatización de la interfaz**. Tres tarjetas: Accesibilidad, Shell (Shizuku) y Root. Cada una muestra el estado y «Abrir». El pedido de root se puede lanzar desde la página.
 
-Una vez activado, se puede utilizar para realizar tareas entre aplicaciones, como "abrir una aplicación, buscar un interruptor en la configuración y encenderla". El efecto específico depende del modelo y del canal de permisos.
+Abajo está **Probar la lectura de pantalla**. Lee lo que hay y muestra la app, cuántos controles hay, la resolución y de dónde salieron los datos. Sirve para comprobar que el permiso quedó bien.
 
-#### 11.3 terminales
+Con eso puedes pedir cosas entre apps: abrir una, encontrar un interruptor y encenderlo. El resultado depende del modelo y del canal.
 
-Entrada:**ajustes → terminales**. Una página de línea de comando real: ingrese comandos, borre la pantalla, reinicie la sesión, interrumpa (Ctrl-C).
+#### 11.3 La terminal
 
-Hay tres entornos que puede ejecutar:
+**Ajustes → Terminal**. Una consola de verdad: escribes, limpias, reinicias o cortas con Ctrl-C.
 
-- **El sandbox que viene con la aplicación. shell**: Aislado en el espacio propio de la aplicación;
-- **Canal de comando del dispositivo**(Se requiere Shizuku/Root): se puede ejecutar `dumpsys`,`settings`,`am`,`pm`,`input`,`screencap` Espere los comandos del sistema, pero sujeto a restricciones de la lista blanca——Se rechazarán las canalizaciones, redirecciones y concatenación de comandos;
-- **Termux**: Después de acceder, es un entorno Linux completo.
+Tres entornos:
 
-Puedes escribir comandos tú mismo aquí,AI También lo uso cuando trabajo.
+- **El de la app**. Aislado en su espacio.
+- **El del dispositivo** (hace falta Shizuku o root). Ahí entran `dumpsys`, `settings`, `am`, `pm`, `input` y `screencap`, entre otros. Tuberías, redirecciones y encadenar comandos se rechazan.
+- **Termux**. Un Linux completo, después de autorizarlo.
 
-#### 11.4 espacio de trabajo
+Puedes escribir tú, y el asistente también la usa cuando trabaja.
 
-Entrada:**ajustes → espacio de trabajo**. El "espacio de trabajo" es el archivador de AI: lee, escribe, mueve y elimina archivos en este directorio controlado y no tocará otros lugares de su teléfono. Puede ver y administrar estos archivos aquí.
+#### 11.4 El espacio de trabajo
 
-**Montaje de múltiples directorios**: Además del espacio de trabajo predeterminado, también puede montar otros directorios en el teléfono (álbumes de fotos, descargas, una determinada carpeta de proyecto), y cada punto de montaje tiene su propio nombre. Al montarlo, se puede configurar en**solo lectura**,AI Puede leerlo y copiarlo, pero no puede cambiarlo ni eliminarlo. En la sesión, también puede limitar qué puntos de montaje solo se pueden operar para evitar que vayan a lugares irrelevantes.
+**Ajustes → Espacio de trabajo**. Es el cajón del asistente. Lee, escribe, mueve y borra solo ahí. El resto del teléfono no lo toca.
 
-**frontera**: No importa cuántos directorios estén montados, la lectura y escritura se limitan al rango de montaje y las rutas fuera de límites se rechazarán directamente.
+Puedes montar otras carpetas (fotos, descargas, un proyecto). Cada punto tiene nombre. Si lo montas **solo para leer**, puede copiar y no puede cambiar ni borrar. En una conversación puedes limitar qué puntos están disponibles.
 
-#### 11.5 Automatización aún mayor
+Aunque montes varias carpetas, nada sale de ese conjunto. Una ruta de afuera se rechaza.
 
-- **automatización del navegador**:AI Puede abrir páginas web, hacer clic, completar formularios, desplazarse y extraer contenido usted mismo (la "Transmisión en vivo de la cápsula" en el Capítulo 7 es para verlo funcionar);
-- **agente visual (ui_agent)**:Captura de pantalla → Juicio del modelo visual → Haga clic / Ingrese → Luego, tome capturas de pantalla para comprobar y completar tareas complejas de la interfaz paso a paso.
+#### 11.5 Un paso más
 
----
-
-### 12. Asistente: utilizado por varias "personas" juntas
-
-#### 12.1 que es asistente
-
-Cada asistente es una "persona" completa e independiente: su propio nombre, avatar, configuración de roles, modelo, herramientas, memoria, base de conocimientos y habilidades. Hay uno para escribir, programar, traducir y chatear sin interferir entre sí. La aplicación viene con un "asistente predeterminado" por defecto; De forma predeterminada, un nuevo asistente solo puede leer su propia memoria de hechos y conversaciones recientes.
-
-#### 12.2 Crear, cambiar, delegar
-
-- **Nuevo**: Configuración → mi asistente → asistente → Crea un nuevo asistente.
-- **cambiar**: en la página de chat, mantenga presionado el título para seleccionar una persona; o toque el ícono en la sección "Socios horizontales" en la página de inicio para comenzar a chatear directamente.
-- **delegar**: Dijo en el diálogo "@"Un asistente me ayudará a manejar esto", el asistente actual le asignará el trabajo TA——El subasistente completa la tarea de forma independiente utilizando su propia personalidad y habilidades, y el proceso se puede ver en la tarjeta de tareas. Cada asistente tiene su propia memoria y no habrá confusión.
-- **Mensajes privados entre asistentes.**: Configuración → Agent → Agent Los mensajes privados le permiten ver los mensajes intercambiados entre asistentes.
-
-#### 12.3 Detalles del asistente: cinco subpáginas
-
-Haga clic en un asistente y habrá cinco subpáginas de arriba a abajo:
-
-- **Conceptos básicos**: nombre, avatar (emoji / Imagen/letra inicial), modelo exclusivo o valor predeterminado global, parámetros de muestreo (temperatura,Top P, Token máximo, nivel de razonamiento, número de mensajes contextuales, salida de transmisión), introducción de una frase, nombre del asistente que se muestra en el chat, si se permite unirse al chat grupal.
-- **palabra rápida**:System Prompt(configuración de roles y reglas), plantillas de mensajes, mensaje predeterminado JSON.
-- **Expandir**:Mensaje rápido,Lorebook,Prompt inyección, habilidades,MCP, herramientas, base de conocimientos——Una vez comprobado quedará vinculado, y el asistente tendrá prioridad para utilizar estos recursos a partir de ahora.
-- **memoria**: Cambio de memoria, si se utiliza adicionalmente el retrato de usuario global/Memoria de pines/Comparta experiencias, referencias de conversaciones recientes, recordatorios de tiempo y agregue recuerdos manualmente. Desactivar la memoria global no desactiva la memoria de hechos del asistente ni las conversaciones recientes.
-- **Avanzado**: encabezados de solicitud personalizados/cuerpos de solicitud, etiquetas y etiquetas de capacidad (para coincidencia de enrutamiento automático), y**Reglas de reemplazo regulares**(Reemplace automáticamente los nombres de los personajes, filtre el texto, etc.; también se puede configurar para que solo afecte la visualización y no cambie el texto original enviado al modelo).
-
-#### 12.4 Cómo escribir "persona" como
-
-El tutorial oficial divide la configuración del asistente en tres niveles, de adentro hacia afuera:
-
-1. **Capa de personaje**: quien es——Nombre, identidad, antecedentes, antecedentes del personaje;
-2. **capa de relación**: ¿Qué tiene que ver contigo?——Amiga, maestra, ama de casa, compañera, como quieras llamarte;
-3. **capa de estilo**: ¿Cómo habla?——Conciso o detallado, animado o tranquilo.
-
-Puede escribir "palabras rápidas" en los tres niveles. → "Configuración de carácter" y luego haga coincidir la configuración global de "Tono/Estilo de tono" (consulte la Sección 3.4). Hay instrucciones más detalladas en la aplicación: Configuración → Tutorial de uso.
-
-#### 12.5 Compartir e importar
-
-- **Exportar**: Hay "Compartir tarjeta de personaje" en la parte inferior de los detalles del asistente.——Las tarjetas de personajes PNG se pueden exportar (SillyTavern formato),JSON(SillyTavern V2), o comparte tarjetas de personajes de Muse directamente con amigos.
-- **importar**: La página de lista de asistentes admite la importación de tarjetas de personajes, incluido el formato SillyTavern (PNG / JSON universales). Puedes usar las cartas de personajes de otras personas tan pronto como las obtengas.
+- **El navegador**. Abre páginas, toca, completa formularios, se desplaza y extrae texto. La cápsula del capítulo 7 es esa misma navegación, a la vista.
+- **El agente de visión** (`ui_agent`). Captura, el modelo decide, toca o escribe, vuelve a capturar y sigue hasta terminar.
 
 ---
 
-### 13. Chat grupal y colaboración entre múltiples agentes
+## Quinta parte. Asistentes
 
-#### 13.1 Chat grupal: permita que los asistentes tengan una reunión
+### 12. Asistentes
 
-Involucre a varios asistentes en la misma conversación y discútala como personas reales.
+#### 12.1 Qué es
 
-- **crear**: Lista de chat grupal de la página de inicio → Crea un nuevo chat grupal; complete el nombre, seleccione miembros (al menos uno) y, opcionalmente, asocie un "equipo".
-- **cuatro modos de discusión**:
-  - Habla por turnos: envías un mensaje y cada IA ​​habla durante un turno;
-  - Discusión libre:AI Continúa automáticamente la conversación entre ellos y se detiene cuando se alcanza el límite superior o nadie responde la llamada;
-  - Modo debate: cadena fija "proponiendo un plan" → pregunta → “Mejora”, cada persona debe responder a la anterior;
-  - Modo anfitrión: Designar a un miembro para que sea el anfitrión, responsable de unirse al programa y promocionar el evento (volviendo a la rotación cuando no se selecciona ningún anfitrión).
-- **Control de conferencias**: La barra de conferencias puede pausar, continuar y omitir los discursos restantes; También puede configurar la duración del discurso (corto/estándar/exhaustivo).
-- **tarjeta de resumen de discusión**: Organice la discusión en un resumen con un clic, que se puede copiar, compartir, guardar como un documento compartido o "continuar la implementación".
-- **votar**: Que los asistentes voten, cada uno vote a favor/en contra según su personalidad y dé sus razones.
-- **plantilla rápida**: Revisión del plan, debate de pros y contras, lluvia de ideas, revisión del proyecto, inicio con un clic (los parámetros de discusión correspondientes se preestablecerán automáticamente).
-- **observador**: Puede configurar miembros que solo miren y no participen y se turnen para hablar.
-- **Contexto del chat grupal**: En la reunión, puedes ver el "documento compartido del grupo" (visible para todos los miembros) y el "contexto exclusivo" de cada IA.
-- **@menciones y susurros**: @ los miembros se nombran en el cuadro de entrada; también puedes susurrarle a un miembro individualmente; Los mensajes admiten respuestas a citas. Los chats grupales se pueden buscar, fijar y editar.
-- Cada asistente mantiene su propia memoria en el chat grupal, por lo que no habrá confusiones.
+Cada asistente es una persona aparte: nombre, avatar, instrucciones, modelo, herramientas, recuerdos, base de conocimientos y habilidades. Uno escribe, otro programa, otro traduce. No se pisan. La app trae un asistente predeterminado. Uno nuevo, por defecto, solo lee sus propios hechos y sus conversaciones recientes.
 
-#### 13.2 Colaboración entre múltiples agentes (equipo)
+#### 12.2 Crear, cambiar y delegar
 
-- Entrada:**ajustes → Agent → Colaboración entre múltiples agentes**.
-- Cree un "equipo": asígnele un nombre, describa los objetivos, seleccione los miembros (plantilla incorporada de "equipo de redacción": borrador → primer borrador → polaco).
-- Flujo de trabajo configurable: defina el orden de ejecución, las dependencias y las estrategias resumidas de los miembros.
-- Después de encenderlo, el asistente principal puede delegar tareas a los miembros del equipo y todo el proceso de colaboración se puede ver en la tarjeta de tareas.
+- **Nuevo**. Ajustes → Mi asistente → Asistentes.
+- **Cambiar**. En el chat, mantén pulsado el título. O toca un avatar en la fila del inicio.
+- **Delegar**. Di «@nombre, encárgate de esto». El asistente actual le pasa el trabajo. El otro lo hace con su propio carácter, y el avance se ve en la tarjeta. Cada uno conserva sus recuerdos.
+- **Mensajes entre asistentes**. Ajustes → Agente → Mensajes del agente.
 
-#### 13.3 Agent mensaje privado
+#### 12.3 Las cinco páginas de un asistente
 
-Los asistentes pueden enviarse mensajes privados entre sí (como comunicaciones durante el proceso de delegación). en **ajustes → Agent → Agent mensaje privado** Consulte la correspondencia aquí y apoye la selección de todos los leídos.
+- **General**. Nombre, avatar (emoji, imagen o inicial), modelo propio o el global, temperatura, top P, tope de tokens, nivel de razonamiento, cuántos mensajes de contexto, si la salida va en streaming, una línea de presentación, el nombre que se ve en el chat y si puede entrar a un grupo.
+- **Instrucciones**. Las instrucciones del sistema, plantillas de mensaje y un mensaje predeterminado en JSON.
+- **Recursos**. Mensajes rápidos, libro de trasfondo, inyecciones, habilidades, MCP, herramientas y bases de conocimientos. Lo que marques queda atado a ese asistente y lo usa primero.
+- **Recuerdos**. El interruptor, si además usa el retrato global, los recuerdos fijados y las experiencias compartidas, las conversaciones recientes, los avisos de tiempo y la carga manual. Apagar la memoria global no apaga los hechos propios ni las conversaciones recientes.
+- **Avanzado**. Cabeceras y cuerpo de la petición, etiquetas para el enrutado, y **reemplazos**. Sirven para cambiar un nombre o filtrar un texto. Puedes hacer que el reemplazo solo se vea, sin alterar lo que se manda al modelo.
+
+#### 12.4 Cómo escribir el personaje
+
+De adentro hacia afuera:
+
+1. **Quién es**. Nombre, identidad y trasfondo.
+2. **Qué relación tienen**. Amigo, profesor, compañero de casa, o el nombre que quieras.
+3. **Cómo habla**. Corto o largo, vivo o calmo.
+
+Eso va en las instrucciones del sistema, y se combina con el tono global de la sección 3.4. En la app hay más detalle en **Ajustes → Tutorial**.
+
+#### 12.5 Compartir
+
+- **Exportar**. Al final del detalle, «Compartir tarjeta». Sale una imagen PNG o un JSON de SillyTavern (V2), o la tarjeta de Muse para pasársela a otra persona.
+- **Importar**. En la lista de asistentes entran tarjetas, también las de SillyTavern en PNG o JSON.
+
+---
+
+### 13. Chat grupal y equipos
+
+#### 13.1 Una reunión
+
+Varios asistentes en la misma conversación.
+
+- **Crear**. En la lista de grupos del inicio. Nombre, al menos un miembro y, si quieres, un equipo.
+- **Cuatro modos**:
+  - Por turnos. Tú escribes y cada uno habla una vez.
+  - Libre. Siguen entre ellos hasta un tope, o hasta que nadie responda.
+  - Debate. Una cadena fija: propuesta, pregunta, mejora. Cada uno responde al anterior.
+  - Con moderador. Un miembro ordena la palabra. Si no hay moderador, vuelve al turno.
+- **La barra**. Pausa, sigue o salta lo que falta. También la extensión de cada turno: corto, normal o largo.
+- **El resumen**. Una tarjeta con la discusión. Se copia, se comparte, se guarda como documento o se sigue desde ahí.
+- **Votar**. Cada uno vota a favor o en contra, según su personaje, y dice por qué.
+- **Plantillas**. Revisión de un plan, a favor y en contra, lluvia de ideas o retrospectiva. Un toque deja los parámetros listos.
+- **Observadores**. Miran y no hablan.
+- **El contexto**. Un documento que ven todos, y un contexto privado de cada asistente.
+- **Menciones**. @ en el campo nombra a alguien. También puedes hablarle solo a uno. Los mensajes se pueden citar. El grupo se busca, se fija y se edita.
+- Cada asistente conserva sus recuerdos. No se mezclan.
+
+#### 13.2 Un equipo
+
+- **Ajustes → Agente → Equipos**.
+- Le pones nombre, un objetivo y los miembros. Hay una plantilla de redacción: borrador, primera versión y pulido.
+- El orden, las dependencias y cómo se resume se configuran.
+- Encendido, el asistente principal reparte el trabajo. La tarjeta muestra el proceso.
+
+#### 13.3 Mensajes entre ellos
+
+Se escriben entre sí, por ejemplo mientras delegan. Se leen en **Ajustes → Agente → Mensajes del agente**. Puedes marcarlos todos como leídos.
 
 ---
 
 ### 14. Habilidades, complementos y MCP
 
-#### 14.1 Habilidades (Skill)
+#### 14.1 Habilidades
 
-Las habilidades son "herramientas distribuibles" que añaden nuevas capacidades al asistente: generación de imágenes, traducción, códigos QR, operaciones de memoria, tareas pendientes, tarjetas, notificaciones, delegación de subtareas, etc.
+Una habilidad es una herramienta que se puede instalar: dibujar, traducir, un código QR, recuerdos, tareas, tarjetas, avisos o una subtarea.
 
-- Entrada:**ajustes → mi asistente → Recursos asistentes → Habilidades**, o se puede acceder directamente desde el panel más en el campo de entrada del chat.
-- Cada habilidad se puede habilitar/deshabilitar individualmente; el formato de importación es `.skill.json`.
-- Algunas habilidades admiten parámetros de entrada, que le permitirán agregar contenido cuando se utilicen.
-- Al importar, se realizará una revisión de seguridad (para evitar la rápida inyección de palabras y el camuflaje de identidad del sistema), y aquellos que no cumplan serán rechazados.
+- **Ajustes → Mi asistente → Recursos → Habilidades**. También salen del signo más, en el chat.
+- Cada una se activa o se apaga. El archivo de importación es `.skill.json`.
+- Algunas piden un dato al usarlas.
+- Al importar hay una revisión. Si parece una inyección de instrucciones o se hace pasar por el sistema, se rechaza.
 
-#### 14.2 Complementos (extensiones externas)
+#### 14.2 Complementos
 
-- Entrada:**ajustes → Gestión de complementos**(También disponible en el Centro de conexión → Complemento (entrar); la página está dividida en tres niveles: "Instalado/Mercado de complementos/Gestión de confianza".
-- **importar**:`.muse-plugin` O paquete de complemento ZIP; antes de la instalación, se mostrarán la versión, el autor, las capacidades de declaración, las herramientas proporcionadas y las huellas digitales del código, y luego se instalarán después de la confirmación.
-- **Firma y confianza**: El complemento tiene verificación de firma.——Hay varios estados: "Verificado y confiable por esta máquina", "La firma es válida pero el emisor no es confiable" y "Sin firmar"; unsigned sólo se puede guardar como borrador deshabilitado y no se ejecutará; Los emisores desconocidos requieren que usted confíe manualmente después de verificar la huella digital de la clave pública.
-- **Deje que AI escriba complementos**: Puede dejar que el asistente redacte un complemento en el sitio; genera un borrador sin firmar. Después de revisar la lista de herramientas y el código en la administración de complementos, haga clic en "Firmar y activar" y entrará en vigor solo después de que esté firmado por la clave del autor local.
-- **mercado de complementos**: Directorio oficial incorporado, que se puede explorar e instalar con un solo clic (administración unificada en la pestaña "Instalado"); la dirección del directorio y la raíz de confianza se pueden personalizar durante la prueba.
-- El código del complemento se ejecuta en un entorno limitado de JS y las capacidades y riesgos se indican claramente.
+- **Ajustes → Complementos**, o desde el centro de conexiones. Tres pestañas: instalados, tienda y confianza.
+- **Importar**. Un `.muse-plugin` o un ZIP. Antes de instalar ves la versión, el autor, lo que declara, las herramientas y la huella del código.
+- **Firma**. Tres estados: verificado y de confianza en este teléfono, firma válida pero editor desconocido, o sin firma. Sin firma solo se guarda como borrador y no corre. Un editor desconocido pide que confíes en la huella de la clave pública.
+- **Que lo escriba el asistente**. Puede dejar un borrador sin firmar. Lo revisas y tocas «Firmar y activar». Entra en vigor con la clave local.
+- **La tienda**. El directorio oficial se puede explorar e instalar. La dirección y la raíz de confianza se pueden cambiar para probar.
+- El código corre en un entorno limitado de JavaScript. Las capacidades y el riesgo se muestran.
 
-#### 14.3 MCP(Model Context Protocol)
+#### 14.3 MCP
 
-- Entrada:**ajustes → centro de conexion → MCP**.
-- Agregar servidor MCP externo (SSE / StreamableHTTP transmisión; transmisiónAndroid El stdio local no es compatible).
-- Token de portador de soporte, encabezado de solicitud personalizado,OAuth Autorización y revocación; reconexión automática cuando se desconecta.
-- Tras acceder, las herramientas proporcionadas por el servidor quedarán registradas automáticamente (con el nombre `mcp_` prefijo), también puede explorar los recursos y mensajes expuestos por el servidor.
-- MCP Herramientas aisladas por asistente: sólo si **Detalles del asistente → Expandir → MCP servidor** Sólo los servidores vinculados explícitamente al servidor estarán expuestos al asistente.
-- Determinación de riesgos: incluyendo delete / send / execute Las herramientas que esperan palabras de operación deben aprobarse cada vez;read / list / get Las clases se ejecutan directamente; el resto se basa en su política de aprobación.
+- **Ajustes → Centro de conexiones → MCP**.
+- Un servidor externo por SSE o Streamable HTTP. En Android no hay stdio local.
+- Acepta un token Bearer, cabeceras propias y OAuth. Si se corta, reintenta.
+- Las herramientas del servidor se registran con el prefijo `mcp_`. También puedes ver los recursos y los mensajes que expone.
+- Cada asistente ve solo los servidores que le marques en **Detalle → Recursos → MCP**.
+- Si el nombre de la herramienta incluye borrar, enviar o ejecutar, pregunta siempre. Si es leer, listar u obtener, corre. El resto sigue tu política de aprobación.
 
-#### 14.4 conector(OAuth autorización)
+#### 14.4 Conectores
 
-Se utiliza para acceder a servicios de terceros que requieren autorización de inicio de sesión; Las credenciales se cifran y almacenan localmente. Si no puede encontrar la entrada, busque "Conector" directamente en la parte superior de la página de configuración.
+Sirven para un servicio que pide iniciar sesión. La credencial se cifra en el teléfono. Si no ves la entrada, busca «Conector» arriba de Ajustes.
 
 ---
 
-### 15. Canales de mensajería: ponga IA en su IM
+### 15. Canales de mensajería
 
-#### 15.1 que puede hacer
+#### 15.1 Para qué
 
-Después de la configuración,Muse Puede enviar mensajes a su software de chat; También puedes recibir mensajes de estas plataformas y que el asistente responda automáticamente.——**Los canales son conversaciones.**, cada diálogo tiene una memoria independiente.
+Muse puede escribir en tus apps de chat, y también recibir. El asistente responde solo si lo activas. **Cada canal es una conversación**, con sus propios recuerdos.
 
-#### 15.2 Plataformas compatibles
+#### 15.2 Plataformas
 
-| plataforma | Método de acceso |
+| Plataforma | Cómo entra |
 | --- | --- |
-| WeChat | Escanee el código QR para vincularse (acceda a la cuenta personal a través del protocolo iLink); una cuenta de WeChat solo puede vincularse a un canal |
-| QQ | Robot de plataforma abierta (App ID / App Secret); el objetivo puede ser un chat grupal o un chat individual |
-| Feishu | Aplicación de creación propia (App ID / App Secret), apoya a China Feishu/en el extranjero Lark |
-| Telegram | Obtenga Bot Token de @BotFather; complete chat_id como destino de envío (se puede dejar en blanco y se enviará automáticamente de regreso a la fuente) |
-| DingTalk | Robots empresariales (Client ID / AppSecret / Robot Code) |
+| WeChat | Código QR, por el protocolo iLink. Una cuenta de WeChat solo se vincula a un canal |
+| QQ | Bot de la plataforma abierta: App ID y App Secret. El destino puede ser un grupo o un chat |
+| Feishu | Una app propia: App ID y App Secret. Feishu en China o Lark afuera |
+| Telegram | El token del bot, con @BotFather. El `chat_id` de destino se puede dejar vacío: responde a quien escribió |
+| DingTalk | Bot de empresa: Client ID, App Secret y Robot Code |
 
-#### 15.3 Acceso y configuración
+#### 15.3 Conectar
 
-- Entrada:**ajustes → Herramientas y conexiones → centro de conexion → canal de mensajes**. La página viene con un "¿Cómo conectarse?" tutorial, que proporciona orientación paso a paso para cada plataforma y está equipado con un punto de verificación de "Conexión de prueba".
-- Las credenciales solo se almacenan cifradas localmente y no se cargarán.
-- **respuesta automática**: Después de abrir, al recibir un mensaje de este canal, el asistente se ejecutará y enviará automáticamente (la cuota del modelo se consume en cada ronda); puedes elegir qué asistente responderá (heredando la configuración, el modelo y los parámetros).
-- **"¿Qué cuenta es la tuya?"**: Especifique su propia cuenta como destino de envío de este canal.
+- **Ajustes → Herramientas y conexiones → Centro de conexiones → Canales**. Cada plataforma tiene un tutorial y un botón para probar la conexión.
+- Las credenciales se cifran en el teléfono. No se suben.
+- **Respuesta automática**. Al llegar un mensaje, el asistente responde. Cada vuelta gasta cuota. Eliges qué asistente responde, con su modelo y sus parámetros.
+- **Cuál es tu cuenta**. Marca tu cuenta como destino de envío de ese canal.
 
-#### 15.4 Diálogo del canal
+#### 15.4 Las conversaciones del canal
 
-- Cada contacto/grupo creará automáticamente una "conversación de canal" con contexto independiente y resumen de desplazamiento.
-- Puede expandir para ver el registro del mensaje o "reiniciar contexto" para borrar el historial y comenzar de nuevo.
-- Hay "Recibidos recientemente" en la página del canal de mensajes, que muestra los mensajes recién recibidos.
+- Cada contacto o grupo crea una conversación, con su contexto y su resumen.
+- Puedes ver el historial o reiniciar el contexto.
+- En la página del canal, «Recibidos recientemente» lista lo que acaba de llegar.
 
-> Instrucciones especiales para WeChat: los recordatorios activos se basan en la "ventana de respuesta después del último mensaje recibido". Si el recordatorio no se entrega, puede activar la ventana enviando primero un mensaje de WeChat a este canal.
-
----
-
-### 16. La mensajería activa y su vida.
-
-#### 16.1 mensajes no solicitados
-
-ajustes → Mensajes proactivos (o desde Configuración → Agent entrar).
-
-- **interruptor + intervalo**: Desde 15 minutos hasta días, puedes configurarlo libremente; También hay un "desplazamiento aleatorio" para permitir que el tiempo de envío se desvíe de forma natural (0 durante un intervalo fijo).
-- **Nivel de iniciativa**Frecuencia: Pocas (aproximadamente una vez cada medio día, máximo 1 por día)/ Estándar (aproximadamente una vez cada 4 horas, hasta 3 mensajes por día)/ Muchos (aproximadamente una vez cada 2 horas, hasta 8 mensajes por día)/ Personalizar.
-- **No molestar periodo**: No se enviará durante este periodo para no molestaros por la noche.
-- Los detalles incluyen: período de tiempo permitido, límite diario (1–10 tiras o infinito), probabilidad de envío (0–100%), contenido activo (resumen diario/diario nocturno/actualizaciones de momentos) y “probar mensajes activos” con un solo clic.
-- Decidirá si venir y cuándo en función del calor de la conversación, el estado de ánimo y su actividad.
-
-#### 16.2 Resumen diario, acción nocturna y círculo de amigos.
-
-en **ajustes → Agent** Aquí:
-
-- **Empuje de resumen diario**: Se generarán resúmenes de conversaciones periódicamente varias veces al día. Aquí puede seleccionar el período de tiempo para enviar el resumen a la notificación (temprano en la mañana/mañana/mediodía/noche pueden ser selecciones múltiples).
-- **Actuar de forma autónoma a altas horas de la noche**: Por la noche, organiza su memoria y escribe un diario sin molestarte.
-- **Número diario de publicaciones en Momentos**: Publica varias actualizaciones todos los días y se puede desactivar.
-
-#### 16.3 Momentos
-
-- Muse Publicarás actualizaciones (imágenes o texto sin formato) con tus asistentes y podrás darles me gusta, comentarlas y guardarlas.
-- La página "Noticias" le recordará quién le dio me gusta y comentó sobre usted; cada uno tiene su propia página de inicio.
-- En la esquina superior derecha, puede publicar sus propias actualizaciones (presione brevemente las imágenes y el texto/presione prolongadamente el texto sin formato) o "generar una actualización inmediatamente"; las actualizaciones también admiten búsqueda y "ver sólo favoritos".
-
-#### 16.4 pequeño teléfono celular
-
-- Ubicación:**ajustes → pequeño teléfono celular**(Marcado en la aplicación como "Versión anterior de la función experimental"). Después de abrir, aparecerá una entrada en la esquina superior derecha de la página de inicio.
-- Un mini escritorio inmersivo: círculo de amigos,AI Álbum de fotos, notas, clima, diario modelo.
-- Las imágenes del álbum se pueden ver en pantalla completa, guardar en el álbum del sistema u ocultar.
-
-#### 16.5 Hitos y estadísticas
-
-- **hito**: Se grabarán momentos memorables (primera conversación, número de días que pasamos juntos, número de mensajes, etc.) y podrás filtrarlos y revisarlos por "Milestone" en la línea de tiempo del centro de memoria.
-- **Estadísticas**: Configuración → Estadística. Admite rango de tiempo (hoy/esta semana/este mes/todos), número total de conversaciones, número de mensajes, número de días activos consecutivos, día más activo, tendencia semanal, mapa de actividad y proporción de uso del modelo. También hay estadísticas de memoria separadas (distribución de importancia, sesiones más activas, tendencias de los últimos 30 días) en el Centro de memoria.
+> En WeChat, un aviso proactivo necesita una ventana abierta por un mensaje reciente. Si no llega, escribe primero tú a ese canal.
 
 ---
 
-### 17. Apariencia y personalización
+## Sexta parte. El día a día y los datos
+
+### 16. Mensajes proactivos
+
+#### 16.1 Que te escriba
+
+**Ajustes → Mensajes proactivos**. También se entra desde Agente.
+
+- **Intervalo**. De 15 minutos a varios días. Un desplazamiento al azar evita que caiga siempre en el mismo minuto. En 0, el intervalo es fijo.
+- **Cuánto insiste**. Poco (cerca de una vez cada medio día, y como máximo una al día), normal (cerca de una cada 4 horas, hasta 3), mucho (cerca de una cada 2 horas, hasta 8) o un valor tuyo.
+- **Silencio**. En esas horas no escribe.
+- También están la franja permitida, el tope diario (de 1 a 10, o sin tope), la probabilidad (de 0 a 100 %), el tipo de contenido (resumen del día, diario de la noche, actualizaciones) y un botón para probar un mensaje.
+- Decide si escribe según lo reciente de la conversación, el ánimo y si estás activo.
+
+#### 16.2 El resumen, la noche y las publicaciones
+
+En **Ajustes → Agente**:
+
+- **Resumen del día**. Varias veces al día. Eliges en qué franjas llega la notificación: madrugada, mañana, mediodía o noche.
+- **De noche, solo**. Ordena recuerdos y escribe un diario sin avisarte.
+- **Publicaciones del día**. Cuántas actualizaciones publica. Se puede apagar.
+
+#### 16.3 Actualizaciones
+
+- Muse y los asistentes publican texto o una imagen. Puedes dar me gusta, comentar y guardar.
+- «Novedades» avisa quién reaccionó. Cada uno tiene su página.
+- Arriba a la derecha publicas tú: un toque corto para imagen y texto, uno largo para solo texto. También puedes pedir que genere una ya. Se buscan, y hay un filtro de solo guardadas.
+
+#### 16.4 Teléfono virtual
+
+- **Ajustes → Teléfono virtual**. En la app figura como función experimental de una versión anterior. Al activarlo, aparece una entrada arriba a la derecha del inicio.
+- Es un escritorio chico: actualizaciones, álbum, notas, clima y un diario del modelo.
+- Las fotos del álbum se ven a pantalla completa, se guardan en el álbum del sistema o se ocultan.
+
+#### 16.5 Hitos y números
+
+- **Hitos**. La primera conversación, los días juntos, la cantidad de mensajes. Se filtran en la línea de tiempo del centro de recuerdos.
+- **Estadísticas**. Ajustes → Estadísticas. Hoy, esta semana, este mes o todo. Conversaciones, mensajes, racha, el día más activo, la semana, el mapa de actividad y qué modelos usas. En el centro de recuerdos hay otras: importancia, conversaciones más activas y los últimos 30 días.
+
+---
+
+### 17. Apariencia
 
 #### 17.1 Tema
 
-Entrada:**ajustes → Apariencia**.
+**Ajustes → Apariencia**.
 
-- **12 conjunto de temas**: Papel cálido, flor de cerezo, océano, primavera, otoño, blanco y negro, tinta, papel japonés, tinte índigo, rima púrpura anochecer, oro ámbar, rosa anochecer. Cada juego viene con dos versiones, clara y oscura.
-- **modo tema**: Siga el sistema/color claro/color oscuro; puede elegir un conjunto separado de colores oscuros o puede "seguir el tema de colores brillantes".
-- **Conmutación programada**:Establecer "hora de despertar (color de luz)"/ "Hora de dormir (oscuro)", cambia automáticamente cuando llega la hora.
-- **Selección de color dinámica**: Siga el fondo de pantalla del sistema para elegir colores (Android 12+).
-- **tema de alto contraste**: Mejora el contraste entre primer plano y fondo, lo cual es conveniente para usuarios con baja visión.
+- **12 temas**: papel cálido, flor de cerezo, océano, primavera, otoño, blanco y negro, tinta, papel japonés, índigo, violeta de atardecer, ámbar y rosa de atardecer. Cada uno tiene claro y oscuro.
+- **Modo**. Seguir al sistema, claro u oscuro. El oscuro puede ser otro juego, o seguir al claro.
+- **Por horario**. Una hora de día y una de noche. Cambia solo.
+- **Color del fondo**. En Android 12 o posterior, toma el color del fondo de pantalla.
+- **Más contraste**. Separa mejor el texto del fondo.
 
-#### 17.2 Fuentes y burbujas
+#### 17.2 Letra y burbujas
 
-- **tamaño del texto**: Pequeño / Mediano / Grande / Extra Grande (0.85x / 1x / 1.15x / 1.3x), con vista previa en tiempo real.
-- **mensaje esquinas redondeadas**: Cuadrado / Esquinas redondeadas / Esquinas redondeadas grandes / Cápsula.
-- **piel de burbuja**: Además de la máscara predeterminada, también se admiten máscaras proporcionadas por complementos.
-- Todos los íconos de aplicaciones son conjuntos de íconos autodibujados (íconos de musa del proyecto de código abierto, 176 en total).
+- **Tamaño**. Chico, mediano, grande o muy grande (0,85×, 1×, 1,15×, 1,3×), con vista previa.
+- **Esquinas**. Cuadradas, redondeadas, muy redondeadas o en cápsula.
+- **Piel**. La de siempre, o una que traiga un complemento.
+- Los iconos son del juego propio de Muse. El proyecto abierto se llama muse-icons y tiene 176.
 
-#### 17.3 Fondo de chat
+#### 17.3 Fondo del chat
 
-ajustes → charlar → Apariencia: personalice la imagen de fondo del chat/Agente/chat grupal; También puedes usar un degradado de dos colores cuando no hay una imagen de fondo.
+**Ajustes → Chat → Apariencia**. Una imagen para el chat, para el agente o para el grupo. Sin imagen, puede ser un degradado de dos colores.
 
-#### 17.4 Retrato de usuario
+#### 17.4 Tu retrato
 
-Ubicación:**ajustes → tarjeta de cuenta superior → Retrato de usuario**.
+**Ajustes → la tarjeta de arriba → Retrato**.
 
-Puede completar: su título, autoidentificación del asistente, perfil personal, edad, ciudad, ocupación, campo profesional, formación académica, habilidades y experiencia, pasatiempos y pasatiempos, estilo de comunicación, preferencia de longitud de respuesta, tono preferido, idioma de respuesta preferido, límites y tabúes, zona horaria.……Todo opcional.
+Puedes completar cómo te llama, cómo se llama a sí mismo, una descripción, edad, ciudad, oficio, campo, estudios, oficio y experiencia, gustos, estilo, si prefieres respuestas cortas o largas, el tono, el idioma y lo que no quieres que toque. También la zona horaria. Nada es obligatorio.
 
-Esta información ingresa a las indicaciones del sistema de la IA, lo que le permite comprenderlo realmente. Entre ellos, el "perfil personal" tiene la máxima prioridad.
+Eso entra en las instrucciones del sistema. La descripción personal pesa más que el resto.
 
 ---
 
-### 18. Datos, respaldo y seguridad
+### 18. Datos, copias y privacidad
 
-#### 18.1 ¿Dónde están los datos?
+#### 18.1 Dónde están
 
-Los diálogos, la memoria, la base de conocimientos y la configuración del asistente se almacenan localmente en el teléfono. No es necesario registrarse ni iniciar sesión; la función de red está desactivada de forma predeterminada; los registros de fallos solo se guardan localmente.
+Conversaciones, recuerdos, bases de conocimientos y asistentes están en el teléfono. No hay cuenta. La red viene apagada. Un registro de fallo se queda en el aparato.
 
-#### 18.2 Copia de seguridad y recuperación
+#### 18.2 Copias
 
-Entrada:**ajustes → Datos y respaldo**.
+**Ajustes → Datos y copias**.
 
-- **copia de seguridad local**: Exportación con un solo clic de todos los datos (sesiones, mensajes, recuerdos, etc.) como JSON estándar (las bases de datos grandes se pueden exportar en fragmentos); establezca la contraseña de respaldo y luego cifre (AES-256). La recuperación de importación sobrescribirá los datos actuales, pero primero se generará una copia protectora y se revertirá automáticamente si falla.
-- **Copia de seguridad en la nube**(ajustes → Datos y respaldo → Copia de seguridad en la nube): admite almacenamiento compatible con WebDAV / S3 (Nut Cloud,Nextcloud etc.); puede configurar el intervalo de copia de seguridad automática (1–30 días); la lista de copias de seguridad remotas puede restaurar cualquier versión y eliminar copias de seguridad antiguas.
-- **Registros de respaldo automáticos**: Configuración → Datos y respaldo → Registros de respaldo recientes; haga clic en cualquiera para restaurar (avisar antes de restaurar, reversión automática si falla).
+- **En el teléfono**. Un toque exporta conversaciones, mensajes y recuerdos a JSON. Si la base es grande, sale en partes. Con contraseña, el archivo se cifra con AES-256. Al restaurar se pisa lo actual, pero antes se guarda una copia de protección. Si falla, vuelve atrás.
+- **En la nube**. WebDAV o un almacén compatible con S3 (Nutstore, Nextcloud y otros). El intervalo automático va de 1 a 30 días. Puedes restaurar una versión de la lista o borrar las viejas.
+- **El historial automático**. Ajustes → Datos y copias → Copias recientes. Toca una para restaurar. Avisa antes, y si falla vuelve atrás.
 
-#### 18.3 Pasar de otras aplicaciones
+#### 18.3 Traer datos de otra app
 
-Entrada:**ajustes → Importación de datos**.
+**Ajustes → Importar datos**.
 
-- apoyo **RikkaHub / Kelivo** Backup ZIP: Importar configuración de proveedores, roles de asistente, registros de conversaciones; se fusionan automáticamente, los duplicados no se sobrescribirán.
-- También apoya **ChatGPT Datos exportados**, y **CherryStudio / Chatbox** JSON exportado (configuración de proveedor y modelo).
-- 「Muse El portal "Native Backup" puede importar sus archivos de copia de seguridad exportados previamente (se sobrescribirán los datos locales actuales).
-- Se recomienda hacer una copia de seguridad de los datos actuales antes de importar.
+- Un ZIP de **RikkaHub** o **Kelivo**: proveedores, asistentes y conversaciones. Se fusiona. Lo repetido no se pisa.
+- También el export de **ChatGPT**, y el JSON de **CherryStudio** o **Chatbox** (proveedores y modelos).
+- «Copia de Muse» importa un archivo que exportaste antes. Eso sí pisa los datos locales.
+- Antes de importar, haz una copia de lo que ya tienes.
 
-#### 18.4 Gestión de datos
+#### 18.4 Cuánto ocupa
 
-Entrada:**ajustes → Gestión de datos**. Ver el uso (número de conversaciones / número de mensajes / número de recuerdos / base de datos y tamaño de caché) y tres operaciones: borrar todas las conversaciones, borrar el caché y restablecer la memoria (lo que significa que no lo reconoce nuevamente). Cada operación tiene una segunda confirmación.
+**Ajustes → Datos**. Ves conversaciones, mensajes, recuerdos y el tamaño de la base y de la caché. Tres acciones, cada una con una segunda confirmación: borrar todas las conversaciones, vaciar la caché y restablecer los recuerdos. Lo último es como si no te conociera.
 
-#### 18.5 Compartir plantilla
+#### 18.5 Qué se comparte
 
-ajustes → Datos y privacidad → Compartir: controle si se incluye la marca de tiempo, el nombre del modelo,Token Números, bloqueos de humor, contenido de razonamiento; formato opcional Markdown / texto sin formato / HTML.
+**Ajustes → Datos y privacidad → Compartir**. Decides si el texto lleva la hora, el modelo, los tokens, el bloque de ánimo y el razonamiento. El formato puede ser Markdown, texto plano o HTML.
 
-#### 18.6 Privacidad y seguridad
+#### 18.6 Privacidad
 
-- **PII Protección de la privacidad**(Habilitado de forma predeterminada): bloquea automáticamente información confidencial como número de teléfono celular, dirección de correo electrónico, tarjeta de identificación, etc. antes de enviarla. Todo lo que ve el proveedor de servicios es el marcador de posición y se restaurará al responder.
-- **Confirmación de enlace**: Haga clic en el enlace del mensaje y primero aparecerá un mensaje de confirmación (puede elegir que no se le recuerde nuevamente en esta conversación).
-- **agente**: Admite proxy de red personalizado.
-- **Registro de auditoría**: Seguimientos de operaciones clave (API Llamada/Acciones del usuario/Autenticación/Sistema/Ejecución del agente).
-- **protección contra accidentes**: Los registros de fallos solo se guardan localmente; en los raros casos en los que no se puede iniciar, el inicio en modo seguro está disponible y no se perderán datos.
+- **Datos personales**. Viene activado. Antes de enviar, tapa teléfonos, correos y documentos. El proveedor ve un marcador. En la respuesta, Muse lo restaura.
+- **Enlaces**. Al tocar un enlace, pregunta. Puedes decir que en esa conversación no vuelva a preguntar.
+- **Proxy**. Uno de red, si lo necesitas.
+- **Auditoría**. Llamadas, acciones tuyas, autenticación, el sistema y lo que hizo el agente.
+- **Si no arranca**. El registro del fallo es local. El modo seguro permite entrar, y los datos siguen ahí.
 
 #### 18.7 Experimental
 
-ajustes → Experimental: cambios para funciones no estabilizadas (recuperación de archivos adjuntos de sesión, salida MOOD forzada, modo de depuración, autorreflexión, compresión de memoria larga, paralelismo de herramientas de solo lectura, etc.), pruebe cosas nuevas a pedido.
+**Ajustes → Experimental**. Funciones que todavía se mueven: recuperar adjuntos, forzar el bloque de ánimo, depuración, reflexión, comprimir recuerdos largos, correr en paralelo las herramientas de solo lectura. Pruébalas si quieres.
 
 ---
 
-### 19. Versión web y más entradas
+### 19. La web y otras entradas
 
-#### 19.1 Versión web (Web servidor)
+#### 19.1 El servidor web
 
-Ubicación:**ajustes → Datos y respaldo** En la pagina "Web Bloque "Servidor".
+En **Ajustes → Datos y copias**, el bloque del servidor web.
 
-- Después de habilitarlo, el teléfono celular se convierte en un pequeño servidor y los dispositivos con el mismo Wi-Fi pueden acceder a él mediante un navegador; el puerto se puede personalizar (1024–65535).
-- El acceso LAN está cerrado de forma predeterminada y debe abrirse manualmente; solo se permite el acceso local de forma predeterminada.
-- Seguridad: se requiere PIN de 6 dígitos para la primera visita (generado automáticamente, copiable y regenerable); y contraseña de inicio de sesión (8 Poco aleatorio); Se puede habilitar HTTPS (certificado autofirmado, la primera vez que visite el navegador le indicará que no es de confianza).
+- Encendido, el teléfono atiende a otros aparatos de la misma Wi-Fi. El puerto va de 1024 a 65535.
+- El acceso desde la red local viene cerrado. Por defecto solo entra este teléfono.
+- La primera visita pide un PIN de 6 dígitos. Se genera solo, se puede copiar y se puede renovar. También hay una contraseña de 8 caracteres. Puedes activar HTTPS con un certificado propio. El navegador va a decir que no lo reconoce. Es esperable.
 
-#### 19.2 Widgets y atajos de escritorio
+#### 19.2 Widgets y atajos
 
-- **widget**: Hay dos tipos: "Nueva conversación/conversación reciente" y "Última respuesta de IA", que se pueden agregar al escritorio para acceder con un solo clic.
-- **Mantenga presionado el ícono de la aplicación**: Nueva conversación/Traducción/Entrada de voz/Configuración/Taquigrafía.
-- **atajos de teclado**(Dispositivos con teclado):Ctrl+K buscar,Ctrl+N nueva conversación,Ctrl+, Abrir configuración,Ctrl+Shift+C Copiar respuesta,Enter enviar,Shift+Enter avance de línea,Esc Cerca.
+- **Widgets**. Uno de conversación nueva y recientes, y otro de la última respuesta. Se agregan al escritorio.
+- **Mantener pulsado el icono**. Nueva conversación, traducción, voz, Ajustes o una nota.
+- **Teclado**. Ctrl+K busca, Ctrl+N abre una conversación, Ctrl+, abre Ajustes, Ctrl+Mayús+C copia la respuesta, Enter envía, Mayús+Enter baja de línea y Esc cierra.
 
-#### 19.3 registro rápido
+#### 19.3 Notas rápidas
 
-- Ubicación:**ajustes → registro rápido**(O mantenga presionado el ícono de la aplicación para seleccionar "Taquigrafía").
-- Recuerda el título, texto,`#etiqueta`; Admite clasificación de carpetas, fijación, búsqueda y configuración de recordatorios; Los archivos adjuntos se pueden agregar, cifrar y exportar a Markdown/JSON.
-- Puede "enviar a una nueva conversación" y dejar que AI se encargue de esta idea por usted.
-- Hay una papelera de reciclaje: los registros eliminados se pueden recuperar o eliminar permanentemente.
-- Admite la captura rápida de ventanas flotantes (habilitada en la configuración de grabación rápida).AI También puede ayudarle a registrarlo (el mismo conjunto de registros que aquí).
+- **Ajustes → Notas rápidas**, o el icono de la app, mantenido, en «Nota».
+- Título, texto y `#etiquetas`. Carpetas, fijar, buscar y un recordatorio. Adjuntos, cifrado y exportación a Markdown o JSON.
+- «Enviar a una conversación nueva» le pasa la idea al asistente.
+- Hay papelera. Lo borrado se recupera o se elimina del todo.
+- La captura flotante se activa en los ajustes de las notas. El asistente puede guardar en el mismo sitio.
 
-#### 19.4 escucha de notificaciones
+#### 19.4 Notificaciones
 
-- Ubicación:**ajustes → escucha de notificaciones**. Después de la autorización,AI Puede leer notificaciones de teléfonos celulares (como entregas urgentes y mensajes de otras personas) y responder llamadas o recordatorios en consecuencia.
-- Puede elegir qué fuentes de texto de notificación pueden ingresar al contexto de IA; Los mensajes admiten filtrado (todos/no leídos/barra de notificaciones únicamente), exportación y limpieza.
-- Compromiso de privacidad: el contenido de las notificaciones solo se almacena localmente (hasta 200 elementos, se descartarán los más antiguos); se filtrarán las notificaciones de la interfaz del sistema y del propio Muse; Los registros se pueden borrar o revocar la autorización en cualquier momento.
+- **Ajustes → Notificaciones**. Con el permiso, el asistente lee avisos del teléfono (un envío, un mensaje) y puede responder o recordarte algo.
+- Eliges qué textos entran al contexto. El listado filtra por todos, no leídos o solo la barra. Se exporta y se vacía.
+- El texto se queda en el teléfono, hasta 200 avisos. Los más viejos se van. No entran los del sistema ni los de Muse. Puedes vaciar la lista o quitar el permiso cuando quieras.
 
-#### 19.5 Página de traducción independiente
+#### 19.5 Traducir aparte
 
-- Ubicación:**ajustes → Traducción**. Seleccione el idioma de destino, ingrese o pegue el texto para traducir y los resultados se pueden copiar con un solo clic.
-- La entrada de traducción para un solo mensaje se encuentra en el menú de pulsación larga del mensaje (ver 4.4).
+- **Ajustes → Traducción**. Eliges el idioma, pegas el texto y copias el resultado.
+- Traducir un solo mensaje está en el menú largo de ese mensaje (4.4).
 
 ---
 
 ## Preguntas frecuentes
 
-**Q:¿Cuesta dinero?**
-A:Muse Ontology es gratuito y de código abierto, sin compras ni suscripciones dentro de la aplicación; las únicas cosas que cuestan dinero son las API de los proveedores de servicios de IA (facturación de pago por uso, la mayoría de los proveedores de servicios le darán créditos gratis cuando se registre). Si desea guardar dinero, puede configurar un modelo económico para el dispositivo en el "modelo auxiliar" (ver 3.3).
+**¿Hay que pagar?**
 
-**Q: ¿Dónde se almacenan los registros y recuerdos del chat? ¿Es seguro?**
-A: Todo localmente en su teléfono celular, sin registro, sin inicio de sesión, sin carga. Se recomienda ejecutar una copia de seguridad para mantener los datos en sus propias manos (consulte el Capítulo 18).
+Muse es gratis y de código abierto. No hay compras dentro de la app. Lo que se paga es la API del proveedor, por uso. Casi todos dan crédito al registrarte. Para gastar menos, pon un modelo barato en los modelos auxiliares (3.3).
 
-**Q: Después de cambiar de modelo, ¿todavía me recuerda?**
-A: Recordar. La memoria se almacena localmente en Muse y no tiene nada que ver con el modelo; Puedes cambiar de proveedor o modelo en cualquier momento sin perder la memoria.
+**¿Dónde están los chats y los recuerdos?**
 
-**Q:¿Por qué a veces no respondes durante mucho tiempo?**
-A: Razones comunes: pensamiento profundo, herramientas de llamada o el proveedor de servicios ascendente está abarrotado. Verifique si hay una tarjeta de tarea o un estado de "pensamiento" en la conversación. Si es así, significa que estás trabajando. Si espera demasiado, puede detenerse y reenviar.
+En el teléfono. Sin cuenta y sin subida. Haz una copia para tenerlos también en otro lado (capítulo 18).
 
-**Q: ¿Cómo hacer que recuerde cosas importantes?**
-A: Simplemente diga "Recuerde:XXX”. Las memorias fijas están disponibles inmediatamente sin esperar a que se ordenen en segundo plano (ver 8.3).
+**Si cambio de modelo, ¿se olvida?**
 
-**Q: ¿Qué debo hacer si lo recuerdo mal?**
-A: Abrir configuración → En el centro de memoria, busque el elemento que desea cambiar o eliminar; Puedes ver el origen y el historial de modificaciones de cada memoria.
+No. Los recuerdos son de Muse, no del modelo. Cambia de proveedor cuando quieras.
 
-**Q: ¿La herramienta no responde y solicita permiso?**
-A:Ir a Configuración → El asistente de configuración de permisos abre el canal correspondiente; si no está autorizada, la herramienta le indicará claramente lo que falta y no fallará silenciosamente (consulte el Capítulo 11).
+**¿Por qué a veces tarda?**
 
-**Q:¿Cómo actualizar?**
-A: "Configuración" en la aplicación → Buscar actualizaciones". Cuando se encuentre una nueva versión, será dirigida a la página de descarga del sitio web oficial (museai.ltd/download) para obtener el nuevo paquete; simplemente sobrescriba e instale sin perder datos.
+Suele ser el razonamiento, una herramienta o el proveedor saturado. Si ves una tarjeta de tarea o el estado de razonamiento, está trabajando. Si ya es demasiado, detén y vuelve a enviar.
 
-**Q: ¿Cómo mover un teléfono celular nuevo?**
-A: haga una copia de seguridad del teléfono antiguo (archivo local o copia de seguridad en la nube) y restáurela en el teléfono nuevo (consulte 18.2).
+**¿Cómo hago que recuerde algo ya?**
 
-**Q: ¿Quieres que me moleste menos o que venga más a mí?**
-A: Configuración → Mensajes activos: ajuste el intervalo y el nivel de iniciativa, o establezca un período de no molestar (ver 16.1).
+Di «Recuerda: …». Queda fijado, sin esperar al orden del fondo (8.3).
 
-**Q: ¿Cómo guardar tráfico y energía?**
-A: Búsqueda de red y cambio de pensamiento en profundidad bajo demanda; La generación de imágenes/vídeo y la reindexación de la base de conocimientos consumen la mayor cantidad de recursos, por lo que se recomienda hacerlo mientras se carga.
+**¿Y si lo recordó mal?**
+
+En el centro de recuerdos, busca la entrada y cámbiala o bórrala. Cada una muestra el origen y los cambios.
+
+**La herramienta pide un permiso.**
+
+Abre el canal en **Ajustes → Asistente de permisos**. Si falta, el mensaje dice cuál. No falla en silencio (capítulo 11).
+
+**¿Cómo actualizo?**
+
+**Ajustes → Buscar actualizaciones**. Si hay una versión, te lleva a museai.ltd/download. Instala encima. Los datos se quedan.
+
+**¿Cómo paso a un teléfono nuevo?**
+
+Copia en el viejo, en un archivo o en la nube, y restaura en el nuevo (18.2).
+
+**Quiero que escriba menos, o más.**
+
+**Ajustes → Mensajes proactivos**. Cambia el intervalo, el nivel o las horas de silencio (16.1).
+
+**¿Cómo gasto menos datos y batería?**
+
+Enciende la búsqueda y el razonamiento solo cuando hagan falta. Generar imagen o video, y volver a indexar la base de conocimientos, es lo que más consume. Mejor con el teléfono enchufado.
 
 ---
 
-## Apéndice A: Copia de seguridad y formato de archivos de datos
+## Apéndice A. Formatos de copia y de archivo
 
-- **exportación local**: JSON estándar; cuando la cantidad de datos es grande, se exporta en NDJSON fragmentado (la primera línea son metadatos, seguida de los registros uno por uno). Después de configurar la contraseña de respaldo, el archivo exportado se cifrará y se utilizará la misma contraseña para descifrarlo cuando se importe.
-- **Paquete de respaldo automático**:`muse_backup_Marca de tiempo.zip`, que contiene instantáneas de la base de datos local (conversaciones, mensajes, recuerdos, hechos, etc.); se reemplaza toda la base de datos y el índice de búsqueda se reconstruye durante la recuperación, y se genera automáticamente una copia protegida antes de la recuperación y se revierte automáticamente si falla.
-- **tarjeta de personaje**: El asistente se puede exportar a tarjetas de personajes PNG/JSON compatibles con SillyTavern (ver 12.5).
-- **paquete de habilidades**:`.skill.json`(ver 14.1);**Paquete de complemento**:`.muse-plugin` o ZIP (ver 14.2).
+- **Exportación local**. JSON. Si hay muchos datos, NDJSON en partes: la primera línea son metadatos y después un registro por línea. Con contraseña, el archivo se cifra y la misma contraseña lo abre al importar.
+- **Copia automática**. `muse_backup_` más la fecha, en zip. Adentro van las bases locales: conversaciones, mensajes, recuerdos y hechos. Al restaurar se reemplaza la base, se reconstruye el índice de búsqueda y, antes, se guarda una copia de protección.
+- **Tarjeta de personaje**. PNG o JSON compatible con SillyTavern (12.5).
+- **Habilidad**. `.skill.json` (14.1). **Complemento**. `.muse-plugin` o ZIP (14.2).
 
-## Apéndice B: Glosario
+## Apéndice B. Glosario
 
-| palabra | significado |
+| Palabra | Qué es |
 | --- | --- |
-| API Key | El bono de llamada del proveedor de servicios modelo, equivalente a un billete |
-| proveedor / Provider | Fabricante o servicio de transferencia que proporciona el modelo. |
-| Token | La unidad de medida utilizada por el modelo para procesar texto es más detallada que "palabra". |
-| ventana contextual | La cantidad máxima de texto que el modelo puede "ver" al mismo tiempo |
-| Pensamiento/razonamiento profundo | El proceso de redacción antes de responder es más lento cuanto más profundo es y más preciso es para preguntas complejas. |
-| base de conocimientos / RAG | Los datos importados y las capacidades de búsqueda hacen que las respuestas estén bien documentadas |
-| Skill | Extensiones de herramientas distribuibles |
-| complemento | Paquetes de extensión de terceros, se ejecutan en un entorno limitado y requieren firma/confianza |
-| MCP | Protocolos estándar para acceder a herramientas externas y fuentes de datos |
-| Shizuku / Root / Termux | Tres esquemas de permisos a nivel de sistema (consulte el Capítulo 11) |
-| MOOD | AI Bloque interno mostrado antes de la respuesta |
-| canal | Acceso a plataformas de mensajería externas como WeChat/QQ/Feishu |
-| mensajes no solicitados | AI Toma la iniciativa de hablar contigo según el ritmo. |
+| API Key | La credencial del proveedor. Sin ella no hay llamada al modelo |
+| Proveedor | Quien sirve el modelo, o una pasarela hacia él |
+| Token | La unidad con la que el modelo mide el texto. Es más fina que una palabra |
+| Contexto | Cuánto texto puede tener en cuenta de una vez |
+| Razonamiento | El borrador de antes de responder. Más profundo, más lento, y mejor en una pregunta difícil |
+| Base de conocimientos | Documentos tuyos, partidos en fragmentos, para citar al responder |
+| Habilidad | Una herramienta que se instala |
+| Complemento | Un paquete de otra persona. Corre en un entorno limitado y pide firma o confianza |
+| MCP | El protocolo para conectar herramientas y datos de afuera |
+| Shizuku, root y Termux | Tres formas de darle permisos de sistema. Capítulo 11 |
+| Ánimo | El bloque interno que se muestra antes de la respuesta |
+| Canal | WeChat, QQ, Feishu, Telegram o DingTalk, como una conversación más |
+| Mensaje proactivo | Muse te escribe según un ritmo, sin que lo llames |
 
 ---
 
-*Este manual se actualiza continuamente con versiones. Si encuentra alguna discrepancia, puede plantear un problema en GitHub o informarnos en el grupo de comunicación.*
+*El manual se actualiza con las versiones. Si algo no coincide, abre un informe en GitHub o avisa en el grupo.*

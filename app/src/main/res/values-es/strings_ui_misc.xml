@@ -1,194 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- ===== ui/common Componentes comunes ===== -->
-    <string name="common_state_enabled">Habilitado</string>
+    <string name="common_state_enabled">Activado</string>
     <string name="common_state_disabled">Desactivado</string>
-    <string name="common_confirm_delete_message">Confirmar para eliminar "%1$s”?</string>
-    <string name="common_delete">Eliminar</string>
+    <string name="common_confirm_delete_message">¿Eliminar \"%1$s\"?</string>
+    <string name="common_delete">Borrar</string>
     <string name="common_confirm_delete_consequence_default">Esta acción no se puede deshacer.</string>
     <string name="common_cancel">Cancelar</string>
-    <string name="common_confirm">OK</string>
-    <string name="common_got_it">Lo tengo</string>
+    <string name="common_confirm">Confirmar</string>
+    <string name="common_got_it">Entiendo</string>
     <string name="common_close">Cerrar</string>
-    <string name="common_retry">Inténtalo de nuevo</string>
-    <string name="common_collapse">Cerrar</string>
+    <string name="common_retry">Reintentar</string>
+    <string name="common_collapse">Contraer</string>
     <string name="common_expand">Expandir</string>
-    <string name="common_avatar_cd">%1$savatar</string>
-    <string name="common_slider_cd">control deslizante, valor actual %1$s</string>
+    <string name="common_avatar_cd">Avatar de %1$s</string>
+    <string name="common_slider_cd">Control deslizante, valor actual %1$s</string>
     <string name="common_open_file_failed">No se puede abrir el archivo: %1$s</string>
 
     <!-- ===== ui/markdown Markdown renderizado ===== -->
-    <string name="markdown_only_http">Sólo admite enlaces http/https</string>
+    <string name="markdown_only_http">Sólo se admiten enlaces http/https</string>
     <string name="markdown_open_link_failed">No se puede abrir el enlace: %1$s</string>
     <!-- v1.97: URL Haga clic dos veces para confirmar -->
-    <string name="markdown_open_link_confirm_title">enlace abierto</string>
-    <string name="markdown_open_link_confirm_message">¿Abrir este enlace en su navegador?</string>
-    <string name="markdown_open_link_confirm_open">abierto</string>
+    <string name="markdown_open_link_confirm_title">Abrir enlace</string>
+    <string name="markdown_open_link_confirm_message">¿Abrir este enlace en tu navegador?</string>
+    <string name="markdown_open_link_confirm_open">Abrir</string>
     <string name="markdown_open_link_confirm_copy">Copiar enlace</string>
-    <string name="markdown_open_link_dont_ask_again">Esta sesión ya no está confirmada (mantén pulsada para abrirla directamente)</string>
+    <string name="markdown_open_link_dont_ask_again">No volver a preguntar en esta sesión (una pulsación larga abre directamente)</string>
     <string name="markdown_link_copied">Enlace copiado</string>
-    <string name="markdown_line_count">%1$d OK</string>
-    <string name="markdown_copied_lines">copiado %1$d líneas de código</string>
+    <string name="markdown_line_count">%1$d líneas</string>
+    <string name="markdown_copied_lines">Se copiaron %1$d líneas de código</string>
     <string name="markdown_copy_code_cd">Copiar código</string>
-    <string name="markdown_collapse_remaining">Ampliar el resto %1$d OK</string>
-    <string name="markdown_svg_label">SVG gráficos</string>
-    <string name="markdown_html_label">HTML tarjeta</string>
-    <string name="markdown_chart_label">cuadro</string>
-    <string name="markdown_mermaid_label">Mermaid cuadro</string>
-    <string name="markdown_plantuml_label">PlantUML Figura</string>
-    <string name="markdown_svg_cd">SVG gráficos</string>
-    <string name="markdown_html_cd">HTML contenido</string>
+    <string name="markdown_collapse_remaining">Mostrar %1$d líneas más</string>
+    <string name="markdown_svg_label">Gráfico SVG</string>
+    <string name="markdown_html_label">Tarjeta HTML</string>
+    <string name="markdown_chart_label">Gráfico</string>
+    <string name="markdown_mermaid_label">Diagrama Mermaid</string>
+    <string name="markdown_plantuml_label">Diagrama PlantUML</string>
+    <string name="markdown_svg_cd">Gráfico SVG</string>
+    <string name="markdown_html_cd">Contenido HTML</string>
     <string name="markdown_chart_cd">Gráfico: %1$s</string>
-    <string name="markdown_mermaid_cd">Mermaid Imagen: %1$s</string>
-    <string name="markdown_plantuml_cd">PlantUML Imagen: %1$s</string>
+    <string name="markdown_mermaid_cd">Diagrama Mermaid: %1$s</string>
+    <string name="markdown_plantuml_cd">Diagrama PlantUML: %1$s</string>
     <string name="markdown_formula_cd">Fórmula matemática: %1$s</string>
     <string name="markdown_chart_render_failed">Error al renderizar el gráfico</string>
-    <string name="markdown_chart_show_source">Mostrar código fuente</string>
-    <string name="markdown_chart_loading">Representación…</string>
-    <string name="markdown_chart_render_failed_prefix">Falló el renderizado: </string>
+    <string name="markdown_chart_show_source">Mostrar fuente</string>
+    <string name="markdown_chart_loading">Renderizando…</string>
+    <string name="markdown_chart_render_failed_prefix">Error de renderizado: </string>
     <!-- Phase 2: Copia de código fuente de contenido enriquecido/sugerencias de renderizado de terceros de PlantUML -->
     <string name="markdown_source_copied">Código fuente copiado</string>
-    <string name="card_save_cd">guardar como archivo</string>
-    <string name="card_favorite">Coleccionar cartas</string>
-    <string name="card_favorite_done">La tarjeta ha sido puesta en favoritos.</string>
-    <string name="card_favorite_failed">No se pudo recoger la tarjeta:%1$s</string>
-    <string name="card_favorite_session_title">colección de tarjetas</string>
-    <string name="card_favorite_wrapper">Colección de tarjetas:%1$s</string>
-    <string name="markdown_plantuml_remote_notice">PlantUML Los gráficos deben estar conectados a Internet y el código fuente del gráfico se enviará al servicio de terceros plantuml.com para su representación en línea.</string>
-    <string name="markdown_plantuml_render_online">Todavía es necesario renderizarlo en línea.</string>
+    <string name="card_save_cd">Guardar como archivo</string>
+    <string name="card_favorite">Guardar tarjeta en favoritos</string>
+    <string name="card_favorite_done">Tarjeta añadida a favoritos</string>
+    <string name="card_favorite_failed">No se pudo guardar la tarjeta: %1$s</string>
+    <string name="card_favorite_session_title">Tarjetas favoritas</string>
+    <string name="card_favorite_wrapper">Tarjeta favorita: %1$s</string>
+    <string name="markdown_plantuml_remote_notice">Los diagramas PlantUML necesitan conexión a internet y el código fuente del diagrama se envía al servicio de terceros plantuml.com para su renderizado en línea.</string>
+    <string name="markdown_plantuml_render_online">Renderizar en línea de todos modos</string>
     <!-- HTML Función de vista previa -->
-    <string name="html_preview_title">HTML Vista previa</string>
+    <string name="html_preview_title">Vista previa HTML</string>
     <string name="html_preview_open_in_browser_cd">Abrir en el navegador</string>
-    <string name="html_preview_copy_source_cd">Copiar código fuente</string>
+    <string name="html_preview_copy_source_cd">Copiar fuente</string>
     <string name="html_preview_open_in_browser_failed">No se puede abrir en un navegador externo: %1$s</string>
-    <string name="html_preview_source_copied">Código fuente HTML copiado</string>
+    <string name="html_preview_source_copied">Código HTML copiado</string>
     <string name="html_preview_button_cd">Vista previa en pantalla completa</string>
     <!-- v1.0.47 P8-2: Descargar producto -->
     <string name="html_preview_download_cd">Descargar</string>
-    <string name="html_preview_download_success">Guardado en el directorio de descargas: %1$s</string>
+    <string name="html_preview_download_success">Guardado en Descargas: %1$s</string>
     <string name="html_preview_download_failed">Error en la descarga: %1$s</string>
 
     <!-- ===== ui/theme Nombre del tema predeterminado ===== -->
-    <string name="theme_warm_paper">papel caliente</string>
-    <string name="theme_sakura">flores de cerezo</string>
-    <string name="theme_ocean">océano</string>
-    <string name="theme_spring">primavera</string>
-    <string name="theme_autumn">otoño</string>
-    <string name="theme_mono">blanco y negro</string>
-    <string name="theme_sumi">tinta</string>
-    <string name="theme_washi">papel japonés</string>
-    <string name="theme_aizome">Aizen</string>
-    <string name="theme_twilight_purple">Mu Ziyun</string>
-    <string name="theme_amber_gold">oro ámbar</string>
-    <string name="theme_dusk_rose">rosa crepuscular</string>
-    <string name="settings_theme_schedule">Conmutación programada</string>
-    <string name="settings_theme_schedule_auto">Conmutación automática</string>
-    <string name="settings_theme_schedule_auto_subtitle">levantarse/Cambia automáticamente entre los modos claro y oscuro durante la hora de dormir</string>
-    <string name="settings_theme_wake_time_title">Hora de despertarse (color claro)</string>
+    <string name="theme_warm_paper">Papel cálido</string>
+    <string name="theme_sakura">Sakura</string>
+    <string name="theme_ocean">Océano</string>
+    <string name="theme_spring">Primavera</string>
+    <string name="theme_autumn">Otoño</string>
+    <string name="theme_mono">Mono</string>
+    <string name="theme_sumi">Sumi (tinta)</string>
+    <string name="theme_washi">Washi (papel)</string>
+    <string name="theme_aizome">Aizome (índigo)</string>
+    <string name="theme_twilight_purple">Púrpura crepuscular</string>
+    <string name="theme_amber_gold">Ámbar dorado</string>
+    <string name="theme_dusk_rose">Rosa del anochecer</string>
+    <string name="settings_theme_schedule">Cambio programado</string>
+    <string name="settings_theme_schedule_auto">Cambio automático</string>
+    <string name="settings_theme_schedule_auto_subtitle">Cambiar automáticamente entre claro y oscuro a la hora de despertarse y dormir</string>
+    <string name="settings_theme_wake_time_title">Hora de despertar (claro)</string>
     <string name="settings_theme_sleep_time_title">Hora de dormir (oscuro)</string>
 
     <!-- ===== ui/speech Entrada de voz y TTS ===== -->
-    <string name="speech_speak_prompt">por favor habla…</string>
-    <string name="speech_tts_init_failed">La inicialización del motor de voz falló y la función de lectura no está disponible.</string>
+    <string name="speech_speak_prompt">Habla ahora…</string>
+    <string name="speech_tts_init_failed">Error al inicializar el motor de voz, la lectura en voz alta no está disponible</string>
     <string name="speech_tts_play_error">Error de reproducción de voz</string>
-    <string name="speech_tts_fallback_to_system">Anormalidad en la red, la voz del sistema ha sido cambiada</string>
-    <string name="speech_tts_no_engine">El dispositivo no tiene motor TTS, instale el servicio de voz</string>
+    <string name="speech_tts_fallback_to_system">Problema de red, cambiado al sistema TTS</string>
+    <string name="speech_tts_no_engine">No se encontró motor TTS. Instala un servicio de voz</string>
     <string name="speech_tts_engine_not_ready">El motor de voz no está listo o el texto está vacío</string>
-    <string name="speech_stop_reading_cd">deja de leer</string>
-    <string name="speech_playback_speed_cd">velocidad de juego %1$sx</string>
-    <string name="speech_seek_forward_5s_cd">Avance rápido 5 segundos</string>
+    <string name="speech_stop_reading_cd">Detener lectura</string>
+    <string name="speech_playback_speed_cd">Velocidad de reproducción %1$sx</string>
+    <string name="speech_seek_forward_5s_cd">Avanzar 5 segundos</string>
     <string name="speech_seek_backward_5s_cd">Retroceder 5 segundos</string>
-    <string name="speech_previous_chunk_cd">Párrafo anterior</string>
-    <string name="speech_next_chunk_cd">siguiente párrafo</string>
-    <string name="speech_pause_cd">pausa</string>
-    <string name="speech_resume_cd">continuar</string>
+    <string name="speech_previous_chunk_cd">Fragmento anterior</string>
+    <string name="speech_next_chunk_cd">Siguiente fragmento</string>
+    <string name="speech_pause_cd">Pausar</string>
+    <string name="speech_resume_cd">Reanudar</string>
 
     <!-- ===== ui/ModelSwitchSheet Panel de interruptores modelo ===== -->
     <string name="model_switch_title">Modelo</string>
-    <string name="model_switch_no_provider">No hay proveedores configurados.\nVe a Ajustes → Proveedores para agregar uno.</string>
-    <string name="model_switch_provider_label">proveedor</string>
-    <string name="model_switch_no_provider_selected">No hay un proveedor seleccionado</string>
-    <string name="model_switch_models_label">modelo(%1$s)</string>
-    <string name="model_switch_fetching">tirando</string>
+    <string name="model_switch_no_provider">No hay proveedores configurados\nAgrega uno en Ajustes → Gestión de proveedores</string>
+    <string name="model_switch_provider_label">Proveedor</string>
+    <string name="model_switch_no_provider_selected">Ningún proveedor seleccionado</string>
+    <string name="model_switch_models_label">Modelos (%1$s)</string>
+    <string name="model_switch_fetching">Obteniendo…</string>
     <string name="model_switch_refresh">Actualizar</string>
-    <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor…</string>
-    <string name="model_switch_no_models">No hay modelos disponibles del proveedor actual.
-Haga clic en Actualizar para extraer la lista desde arriba</string>
+    <string name="model_switch_fetching_upstream">Obteniendo modelos del proveedor...</string>
+    <string name="model_switch_no_models">Este proveedor todavía no tiene modelos. Toca Actualizar para obtener la lista.</string>
     <!-- v1.0.4 (P2): Botón de reintento fallido al extraer el modelo -->
-    <string name="model_switch_retry">Inténtalo de nuevo</string>
-    <string name="model_switch_default">%1$s(Predeterminado)</string>
-    <string name="model_switch_selected_cd">seleccionado</string>
+    <string name="model_switch_retry">Reintentar</string>
+    <string name="model_switch_default">%1$s (predeterminado)</string>
+    <string name="model_switch_selected_cd">Seleccionado</string>
     <string name="model_switch_ability_vision">Visión</string>
-    <string name="model_switch_ability_reasoning">razonamiento</string>
+    <string name="model_switch_ability_reasoning">Razonamiento</string>
     <string name="model_switch_ability_tool">Herramientas</string>
-    <string name="model_switch_ability_image">Dibujo</string>
-    <string name="model_switch_ability_search">Redes</string>
-    <string name="model_switch_search_placeholder">Modelo de búsqueda</string>
+    <string name="model_switch_ability_image">Imagen</string>
+    <string name="model_switch_ability_search">Web</string>
+    <string name="model_switch_search_placeholder">Buscar modelos</string>
     <string name="model_switch_expand_all">Expandir todo</string>
     <string name="model_switch_collapse_all">Contraer todo</string>
     <string name="model_switch_group_count">%1$s (%2$d)</string>
     <!-- v1.0.18: insignia de modelo gratis/Consejos(Alineación FreeModelConfig) -->
-    <string name="model_switch_free_badge">gratis</string>
-    <string name="model_switch_free_provider_hint">Disponible sin iniciar sesión, simplemente seleccione el modelo y úselo inmediatamente</string>
-    <string name="model_switch_context_limit">contexto %1$s</string>
-    <string name="model_switch_output_limit">Límite superior de salida %1$s tokens</string>
-    <string name="model_switch_metadata_unverified">Información de competencia no verificada</string>
-    <string name="model_switch_metadata_suspicious">Información de capacidad sospechosa</string>
+    <string name="model_switch_free_badge">Gratis</string>
+    <string name="model_switch_free_provider_hint">No hace falta iniciar sesión: elige el modelo y úsalo.</string>
+    <string name="model_switch_context_limit">Contexto %1$s</string>
+    <string name="model_switch_output_limit">Límite de salida: %1$s tokens</string>
+    <string name="model_switch_metadata_unverified">Capacidades sin verificar</string>
+    <string name="model_switch_metadata_suspicious">Capacidades sospechosas</string>
 
     <!-- ===== ui/HomeScreen pagina de inicio ===== -->
-    <string name="home_tab_tasks">Tarea</string>
-<string name="home_tab_agent">Agent</string>
-    <string name="home_tab_group_chat">chat grupal</string>
-    <string name="home_settings_cd">ajustes</string>
+    <string name="home_tab_tasks">Tareas</string>
+<string name="home_tab_agent">Agente</string>
+    <string name="home_tab_group_chat">Grupo</string>
+    <string name="home_settings_cd">Ajustes</string>
     <string name="home_search_cd">Buscar</string>
-    <string name="home_miniphone_cd">pequeño teléfono celular</string>
+    <string name="home_miniphone_cd">Teléfono virtual</string>
 
     <!-- ===== ui/FavoritesScreen Favoritos ===== -->
     <string name="favorites_title">Favoritos (%1$d)</string>
-    <string name="favorites_empty_title">Aún no hay noticias favoritas</string>
-    <string name="favorites_empty_subtitle">Haga clic en la estrella en la fila de acción del mensaje en la página de chat para agregarlo a sus favoritos</string>
-    <string name="favorites_role_user">yo</string>
-    <string name="favorites_role_system">sistema</string>
-    <string name="favorites_role_tool">Herramientas</string>
-    <string name="favorites_unfavorite_cd">Cancelar favoritos</string>
-    <string name="favorites_group_action_cd">Configurar grupos</string>
+    <string name="favorites_empty_title">Aún no hay favoritos</string>
+    <string name="favorites_empty_subtitle">Toca la estrella de un mensaje para agregarlo a favoritos.</string>
+    <string name="favorites_role_user">Yo</string>
+    <string name="favorites_role_system">Sistema</string>
+    <string name="favorites_role_tool">Herramienta</string>
+    <string name="favorites_unfavorite_cd">Eliminar favorito</string>
+    <string name="favorites_group_action_cd">Establecer grupo</string>
     <!-- v1.104 U7: Agrupación de colecciones/etiqueta -->
-    <string name="favorites_filter_all">Todos (%1$d)</string>
-    <string name="favorites_filter_ungrouped">No agrupado (%1$d)</string>
+    <string name="favorites_filter_all">Todo (%1$d)</string>
+    <string name="favorites_filter_ungrouped">Desagrupado (%1$d)</string>
     <string name="favorites_tag_chip">%1$s (%2$d)</string>
-    <string name="favorites_tag_edit_title">Configurar grupos</string>
-    <string name="favorites_tag_edit_hint">Nombre del grupo (dejar en blanco = no agrupado)</string>
-    <string name="favorites_tag_edit_clear">grupo claro</string>
-    <string name="favorites_tag_edit_confirm">OK</string>
+    <string name="favorites_tag_edit_title">Establecer grupo</string>
+    <string name="favorites_tag_edit_hint">Nombre del grupo (vacío = desagrupado)</string>
+    <string name="favorites_tag_edit_clear">Borrar grupo</string>
+    <string name="favorites_tag_edit_confirm">Aceptar</string>
     <string name="favorites_tag_edit_cancel">Cancelar</string>
-    <string name="favorites_tag_label">Agrupación:%1$s</string>
-    <string name="favorites_empty_in_filter">Actualmente no hay colecciones en este grupo.</string>
-    <string name="favorites_stale_variant_badge">Fue regenerado más tarde y ésta es una versión antigua.</string>
+    <string name="favorites_tag_label">Grupo: %1$s</string>
+    <string name="favorites_empty_in_filter">No hay favoritos en este grupo.</string>
+    <string name="favorites_stale_variant_badge">Existe una versión más reciente</string>
 
     <!-- ===== ui/ImageSaveUtils guardar imagen ===== -->
     <string name="image_save_decode_failed">No se puede decodificar la imagen</string>
-    <string name="image_save_mediastore_insert_failed">MediaStore insert falló</string>
+    <string name="image_save_mediastore_insert_failed">Error al insertar MediaStore</string>
     <string name="image_save_open_stream_failed">No se puede abrir el flujo de salida</string>
 
 
     <!-- ===== ui/activity/ActivityPanel Registro de actividad ===== -->
     <string name="activity_log_title">Registro de actividad</string>
-    <string name="activity_empty">Aún no hay registro de actividad.</string>
+    <string name="activity_empty">Aún no se ha registrado actividad.</string>
 
     <!-- ===== Launcher Atajo de pulsación larga(shortcuts.xml Cotización) ===== -->
-    <string name="shortcut_new_chat_short">nueva conversación</string>
-    <string name="shortcut_new_chat_long">Iniciar una nueva conversación</string>
-    <string name="shortcut_translate_short">Traducción</string>
-    <string name="shortcut_translate_long">Traducción abierta</string>
+    <string name="shortcut_new_chat_short">Nuevo chat</string>
+    <string name="shortcut_new_chat_long">Iniciar nuevo chat</string>
+    <string name="shortcut_translate_short">Traducir</string>
+    <string name="shortcut_translate_long">Abrir traducción</string>
     <string name="shortcut_voice_input_short">Voz</string>
-    <string name="shortcut_voice_input_long">Entrada de voz</string>
-    <string name="shortcut_settings_short">ajustes</string>
-    <string name="shortcut_settings_long">Abrir configuración</string>
+    <string name="shortcut_voice_input_long">Entrada por voz</string>
+    <string name="shortcut_settings_short">Ajustes</string>
+    <string name="shortcut_settings_long">Abrir ajustes</string>
     <!-- v1.0.18: Acceso directo a grabación rápida -->
-    <string name="shortcut_quick_notes_short">taquigrafía</string>
-    <string name="shortcut_quick_notes_long">registro rápido</string>
+    <string name="shortcut_quick_notes_short">Nota rápida</string>
+    <string name="shortcut_quick_notes_long">Notas rápidas</string>
     <!-- v1.0.69: Visor visual del navegador -->
-    <string name="browser_viewer_collapse">Cerrar</string>
+    <string name="browser_viewer_collapse">Contraer</string>
     <string name="browser_viewer_refresh">Actualizar</string>
     <string name="browser_viewer_close">Cerrar el navegador</string>
     <!-- v1.x: Entrada explícita del navegador integrado y estado visible para el usuario -->
@@ -196,11 +195,11 @@ Haga clic en Actualizar para extraer la lista desde arriba</string>
     <string name="browser_status_blank">Esperando navegación</string>
     <string name="browser_status_loading">Cargando…</string>
     <string name="browser_status_ready">Listo</string>
-    <string name="browser_status_cd">Navegador:%1$s, haga clic para ver</string>
-    <string name="browser_viewer_blank_title">El navegador está abierto</string>
-    <string name="browser_viewer_blank_message">Espere a que la IA abra la página web o utilice las herramientas del navegador para navegar.</string>
-    <string name="browser_menu_clear_cookies">Borrar Cookie</string>
+    <string name="browser_status_cd">Navegador: %1$s, toca para ver</string>
+    <string name="browser_viewer_blank_title">Navegador abierto</string>
+    <string name="browser_viewer_blank_message">Esperando a que la IA abra una página o navegue con las herramientas del navegador.</string>
+    <string name="browser_menu_clear_cookies">Borrar cookies</string>
     <string name="browser_menu_open_external">Abrir en el navegador del sistema</string>
     <string name="browser_menu_copy_link">Copiar enlace</string>
-    <string name="browser_cookies_cleared">despejado Cookie</string>
+    <string name="browser_cookies_cleared">Cookies borradas</string>
 </resources>

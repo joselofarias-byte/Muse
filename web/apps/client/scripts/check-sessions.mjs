@@ -93,7 +93,7 @@ try {
       onClose: () => undefined,
     }),
   );
-  assert(pickerHtml.includes('role="dialog"') && pickerHtml.includes('aria-label="Seleccionar asistente"'), "La selección del asistente es un cuadro de diálogo.");
+  assert(pickerHtml.includes('role="dialog"') && pickerHtml.includes('aria-label="Elegir asistente"'), "La selección del asistente es un cuadro de diálogo.");
   assert(pickerHtml.includes("PROTO-Muse") && pickerHtml.includes("PROTO-Iris"), "Ambas líneas de ayudantes enumeran nombres");
   assert(pickerHtml.includes(">Predeterminado<"), "El asistente predeterminado está marcado");
   assert(pickerHtml.includes('src="/api/media/face-1"'), "Renderizar imagen cuando la dirección del avatar esté disponible");
@@ -148,7 +148,7 @@ try {
     );
   const hidden = sidebar(false);
   assert(!hidden.includes("Archivado"), "Las sesiones de archivo no aparecen cuando el interruptor está apagado");
-  assert(hidden.includes("mostrar archivo") && hidden.includes('role="switch"'), "Hay un interruptor \"mostrar archivo\" en la cabeza.");
+  assert(hidden.includes("Mostrar archivadas") && hidden.includes('role="switch"'), "Hay un interruptor \"Mostrar archivadas\" en la cabeza.");
   const shown = sidebar(true);
   assert(shown.includes("Archivado") && shown.includes("Archivado"), "Después de activar el interruptor, aparece la sesión de archivo y está marcada como \"Archivada\".");
   assert(/onToggleArchived/.test(DRAWER), "El estado del interruptor lo mantiene la capa superior.");
@@ -180,11 +180,11 @@ try {
   // ── 6. focus_not_held Consejos exclusivos para ─────────────────────────────
   const zh = (key) => mod.translate("es", key);
   assert(mod.describeHostError("focus_not_held", "x", zh) === zh("error.focusNotHeld"), "focus_not_held Cambiar a consejos exclusivos");
-  assert(zh("error.focusNotHeld").includes("otros dispositivos"), `Aviso en español:${zh("error.focusNotHeld")}`);
+  assert(zh("error.focusNotHeld").includes("Otro dispositivo"), `Aviso en español:${zh("error.focusNotHeld")}`);
   assert(mod.translate("en", "error.focusNotHeld").includes("Another device"), "Los consejos en inglés también tienen redacción exclusiva.");
   assert(mod.describeHostError("session_not_found", "x", zh).includes("ya no existe"), "session_not_found También tiene copia legible.");
   const notInSession = mod.describeHostError("message_not_in_current_session", "x", zh);
-  assert(notInSession.includes("no está en la sesión actual"), `message_not_in_current_session:${notInSession}`);
+  assert(notInSession.includes("no está en la conversación actual"), `message_not_in_current_session:${notInSession}`);
   const deletedRace = mod.describeHostError("message_not_found", "x", zh);
   assert(deletedRace.includes("acaba de eliminar") || deletedRace.includes("ya no existe"), `message_not_found(Eliminar competencia) palabras humanas:${deletedRace}`);
   assert(mod.describeHostError("Algún error desconocido", "Ten todo en cuenta", zh) === "Algún error desconocido", "Las razones desconocidas se revelan tal como son.");

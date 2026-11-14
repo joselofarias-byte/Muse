@@ -196,6 +196,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                         ) {
                             // botón de prueba(Running deshabilitado y mostrado cuando spinner)
                             val isRunning = probeState is ProbeState.Running
+                            val probeRequest = stringResource(R.string.review_vision_probe_request)
                             MuseCapsuleButton(
                                 text = if (isRunning) {
                                     stringResource(R.string.settings_vision_probe_running)
@@ -222,7 +223,7 @@ fun VisionSettingsPage(onBack: () -> Unit) {
                                             visionBridge.prepare(
                                                 text = "prueba de sonda",
                                                 images = listOf(VISION_PROBE_IMAGE_PNG_BASE64),
-                                                userRequest = "prueba de sonda:¿De qué color es esta imagen??",
+                                                userRequest = probeRequest,
                                                 sessionId = null, // No utilizar la dimensión de la clave de caché session
                                             )
                                         }
